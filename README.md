@@ -34,9 +34,7 @@ prediction.
 
 ### LLM Context Inefficiency
 
-Large Language Models rely on long token contexts. As the context
-grows: - memory usage increases - inference slows down - irrelevant
-tokens may remain in the context
+(Riddick Input)
 
 This project explores ways to **audit model behavior and optimize LLM
 context usage**.
@@ -58,8 +56,7 @@ Identify potential leakage risks in datasets and ML pipelines.
 
 ## LLM Context Optimization
 
-Explore strategies such as: - token importance scoring - token aging -
-context pruning - KV cache behavior
+(Riddick Input)
 
 ## Visualization Dashboard
 
@@ -111,6 +108,103 @@ Streamlit
 
 ------------------------------------------------------------------------
 
+# Datasets
+
+This project uses two categories of datasets because the tasks being
+studied involve different machine learning scenarios.
+
+Tabular datasets are used for fairness auditing and data leakage
+detection.\
+Text datasets are used for LLM context and token optimization.
+
+------------------------------------------------------------------------
+
+## 1. Datasets for Fairness Auditing and Data Leakage Detection
+
+## Adult Income Dataset
+
+The Adult Income dataset from the UCI Machine Learning Repository is
+widely used in fairness research.
+
+Task: Predict whether an individual earns more than \$50,000 per year.
+
+Important attributes include:
+
+-   age
+-   education
+-   occupation
+-   marital status
+-   race
+-   gender
+
+Use in this project:
+
+-   fairness auditing
+-   subgroup performance analysis
+-   bias detection
+
+------------------------------------------------------------------------
+
+## German Credit Dataset
+
+The German Credit dataset studies fairness in financial decision-making
+systems.
+
+Task: Predict whether an individual represents good or bad credit risk.
+
+Attributes include:
+
+-   age
+-   gender
+-   employment status
+-   credit history
+-   loan amount
+
+Use in this project:
+
+-   fairness evaluation in financial decision systems
+-   validation of bias detection methods
+
+------------------------------------------------------------------------
+
+## Synthetic Dataset for Leakage Experiments
+
+Synthetic datasets will be generated to simulate controlled data leakage
+scenarios.
+
+Examples of leakage scenarios:
+
+-   a feature directly encoding the target variable
+-   future information appearing in training data
+-   duplicated information between training and testing sets
+
+Example synthetic features:
+
+income\
+income_proxy (leaked feature)\
+future_label\
+duplicated_target
+
+Use in this project:
+
+-   testing leakage detection algorithms
+-   validating target leakage detection
+-   benchmarking toolkit performance
+
+Advantages:
+
+-   controlled experimental setup
+-   known ground truth leakage
+-   easier validation of detection techniques
+
+------------------------------------------------------------------------
+
+## 2. Datasets for LLM Context and Token Optimization
+
+(Riddick Input)
+
+------------------------------------------------------------------------
+
 # Modules
 
 ## Fairness Audit
@@ -137,12 +231,7 @@ Outputs: - leakage risk report - suspicious feature alerts
 
 ## LLM Context Optimization
 
-Experimental module focused on improving long-context LLM tasks.
-
-Research ideas explored: - token importance scoring - token aging -
-context pruning - KV cache behavior
-
-Goal: Reduce unnecessary tokens and improve inference efficiency.
+(Riddick Input)
 
 ------------------------------------------------------------------------
 
@@ -212,17 +301,6 @@ summary - leakage alerts - LLM experiment outputs
 # Team
 
 Project developed as part of the **GRIDS research initiative**.
-
-------------------------------------------------------------------------
-
-# Future Extensions
-
-Potential future directions include:
-
--   fairness drift monitoring
--   production ML monitoring
--   automated bias mitigation
--   advanced LLM memory management
 
 ------------------------------------------------------------------------
 
