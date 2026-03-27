@@ -46,34 +46,22 @@ In many machine learning workflows, model development focuses heavily on **accur
 ```
 ml_reliability_efficiency_toolkit/
 │
-├── fairness_audit/
-│   ├── README.md               ← metrics, thresholds, evaluation criteria
-│   ├── fairness_metrics.py
-│   └── subgroup_analysis.py
+├── modules/
+│   ├── fairness/               ← fairness audit module
+│   │   └── README.md           ← metrics, thresholds, evaluation criteria
+│   │
+│   ├── leakage/                ← leakage detection module
+│   │   └── README.md           ← detection methods, risk levels, evaluation criteria
+│   │
+│   └── token/                  ← LLM context optimizer module
+│       └── README.md           ← benchmarks, success criteria, evaluation criteria
 │
-├── leakage_detection/
-│   ├── README.md               ← detection methods, risk levels, evaluation criteria
-│   ├── leakage_checks.py
-│   └── correlation_analysis.py
-│
-├── llm_context_optimizer/
-│   ├── README.md              
-│
-├── dashboard/
-│   └── streamlit_app.py
-│
-├── notebooks/
-│   ├── fairness_demo.ipynb
-│   ├── leakage_demo.ipynb
-│   └── llm_context_demo.ipynb
-│
-├── docs/
-│   ├── fairness_metrics.md
-│   ├── data_leakage_examples.md
-│   ├── llm_context_management.md
-│   ├── kv_cache_explanation.md
-│   └── project_architecture.md
-│
+├── dashboard/                  ← Streamlit app
+├── data/                       ← raw and processed datasets
+├── docs/                       ← concept explanations and architecture docs
+├── evaluation/                 ← shared evaluation utilities
+├── notebooks/                  ← demo notebooks per module
+├── reports/                    ← experiment outputs and result summaries
 ├── requirements.txt
 ├── .gitignore
 └── README.md                   ← this file
