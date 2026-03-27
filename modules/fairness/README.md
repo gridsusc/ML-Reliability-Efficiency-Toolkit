@@ -120,7 +120,7 @@ Per-group TPR:
 
 ---
 
-## Important Caveats
+## Important 
 
 **Metric incompatibility:**  
 Fairness definitions conflict. Do not optimize for all simultaneously.
