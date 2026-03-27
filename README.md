@@ -1,319 +1,198 @@
 # ML Reliability & Efficiency Toolkit
 
-A modular toolkit for **Responsible AI auditing and LLM context
-optimization**.
+A modular toolkit for **Responsible AI auditing and LLM context optimization**.
 
-This project explores methods to improve **machine learning reliability,
-fairness, and efficiency** by combining:
+This project explores methods to improve **machine learning reliability, fairness, and efficiency** by combining:
 
--   Responsible AI auditing
--   Data leakage detection
--   LLM token/context optimization
--   Model evaluation visualization
+- Responsible AI auditing
+- Data leakage detection
+- LLM token/context optimization
+- Model evaluation visualization
 
-The goal is to create **practical tools that developers and researchers
-can integrate into ML pipelines**.
+The goal is to create **practical tool that students can integrate into ML pipelines**.
 
-------------------------------------------------------------------------
+---
+
+# Installation & Setup
+
+
+---
 
 # Project Motivation
 
-In many machine learning workflows, model development focuses heavily on
-**accuracy**. However, several important risks are often overlooked:
+In many machine learning workflows, model development focuses heavily on **accuracy**. However, several important risks are often overlooked.
 
-### Bias and Fairness
+**Bias and Fairness:** Models can perform differently across demographic groups. Without proper auditing, these disparities may go unnoticed until they cause harm.
 
-Models can perform differently across demographic groups. Without proper
-auditing, these biases may go unnoticed.
+**Data Leakage:** Models can achieve artificially high performance by accidentally learning information that would not be available at prediction time, leading to failures in production.
 
-### Data Leakage
+**LLM Context Inefficiency:** *(Riddick Input)*
 
-Sometimes models achieve artificially high performance because they
-accidentally learn information that would not be available in real-world
-prediction.
-
-### LLM Context Inefficiency
-
-(Riddick Input)
-
-This project explores ways to **audit model behavior and optimize LLM
-context usage**.
-
-------------------------------------------------------------------------
+---
 
 # Project Goals
 
-The toolkit aims to provide:
+| Module | Goal |
+|---|---|
+| Responsible AI Auditing | Evaluate model performance across demographic subgroups and compute fairness metrics |
+| Data Leakage Detection | Identify potential leakage risks in datasets and ML pipelines |
+| LLM Context Optimization | *(Riddick Input)* |
+| Visualization Dashboard | Provide interactive visual summaries of all module outputs |
 
-## Responsible AI Auditing
-
-Evaluate model performance across demographic subgroups and compute
-fairness metrics.
-
-## Data Leakage Detection
-
-Identify potential leakage risks in datasets and ML pipelines.
-
-## LLM Context Optimization
-
-(Riddick Input)
-
-## Visualization Dashboard
-
-Provide visual summaries of: - fairness metrics - subgroup performance -
-leakage risks - experiment results
-
-------------------------------------------------------------------------
+---
 
 # Repository Structure
 
+```
 ml_reliability_efficiency_toolkit/
+│
+├── fairness_audit/
+│   ├── README.md               ← metrics, thresholds, evaluation criteria
+│   ├── fairness_metrics.py
+│   └── subgroup_analysis.py
+│
+├── leakage_detection/
+│   ├── README.md               ← detection methods, risk levels, evaluation criteria
+│   ├── leakage_checks.py
+│   └── correlation_analysis.py
+│
+├── llm_context_optimizer/
+│   ├── README.md              
+│
+├── dashboard/
+│   └── streamlit_app.py
+│
+├── notebooks/
+│   ├── fairness_demo.ipynb
+│   ├── leakage_demo.ipynb
+│   └── llm_context_demo.ipynb
+│
+├── docs/
+│   ├── fairness_metrics.md
+│   ├── data_leakage_examples.md
+│   ├── llm_context_management.md
+│   ├── kv_cache_explanation.md
+│   └── project_architecture.md
+│
+├── requirements.txt
+├── .gitignore
+└── README.md                   ← this file
+```
 
-fairness_audit/ fairness_metrics.py subgroup_analysis.py
+---
 
-leakage_detection/ leakage_checks.py correlation_analysis.py
+# Methodology
 
-llm_context_optimizer/ token_importance.py context_pruning.py
-kv_cache_experiments.py
+Each module follows a consistent evaluation approach:
 
-dashboard/ streamlit_app.py
+1. **Define formal metrics**
+2. **Apply thresholds for interpretation**
+3. **Generate structured outputs**
+4. **Integrate results into a unified dashboard**
 
-notebooks/ fairness_demo.ipynb leakage_demo.ipynb llm_context_demo.ipynb
+This ensures that results are comparable across modules, interpretable, and actionable.
 
-docs/ fairness_metrics.md data_leakage_examples.md
-llm_context_management.md kv_cache_explanation.md
-project_architecture.md
-
-------------------------------------------------------------------------
+---
 
 # Technology Stack
 
-### Programming Language
+| Layer | Libraries |
+|---|---|
+| **Base** | pandas, numpy, scikit-learn |
+| **Fairness Audit** | fairlearn, aif360 |
+| **Leakage Detection** | pandas, scikit-learn, great-expectations, scipy |
+| **LLM Context Optimizer** | Riddick Input |
+| **Dashboard** | streamlit, plotly, matplotlib |
 
-Python
-
-### Responsible AI Libraries
-
--   Fairlearn
--   AIF360
-
-### LLM Frameworks
-
--   HuggingFace Transformers
--   PyTorch
-
-### Visualization
-
-Streamlit
-
-------------------------------------------------------------------------
+---
 
 # Datasets
 
-This project uses two categories of datasets because the tasks being
-studied involve different machine learning scenarios.
+## Tabular — Fairness Auditing and Leakage Detection
 
-Tabular datasets are used for fairness auditing and data leakage
-detection.\
-Text datasets are used for LLM context and token optimization.
+**Adult Income Dataset** (UCI ML Repository): Predicts whether an individual earns more than $50,000/year. Attributes include age, education, occupation, marital status, race, and gender. Used for fairness auditing and subgroup analysis.
 
-------------------------------------------------------------------------
+**German Credit Dataset**: Predicts whether an individual represents a good or bad credit risk. Attributes include age, gender, employment status, credit history, and loan amount. Used for fairness evaluation in financial decision systems.
 
-## 1. Datasets for Fairness Auditing and Data Leakage Detection
+**Synthetic Leakage Dataset**: Generated to simulate controlled leakage scenarios including a feature directly encoding the target, future information in training data, and train/test duplication. Used for testing and validating the leakage detection module.
 
-## Adult Income Dataset
+## Text — LLM Context and Token Optimization
 
-The Adult Income dataset from the UCI Machine Learning Repository is
-widely used in fairness research.
+*(Riddick Input)*
 
-Task: Predict whether an individual earns more than \$50,000 per year.
-
-Important attributes include:
-
--   age
--   education
--   occupation
--   marital status
--   race
--   gender
-
-Use in this project:
-
--   fairness auditing
--   subgroup performance analysis
--   bias detection
-
-------------------------------------------------------------------------
-
-## German Credit Dataset
-
-The German Credit dataset studies fairness in financial decision-making
-systems.
-
-Task: Predict whether an individual represents good or bad credit risk.
-
-Attributes include:
-
--   age
--   gender
--   employment status
--   credit history
--   loan amount
-
-Use in this project:
-
--   fairness evaluation in financial decision systems
--   validation of bias detection methods
-
-------------------------------------------------------------------------
-
-## Synthetic Dataset for Leakage Experiments
-
-Synthetic datasets will be generated to simulate controlled data leakage
-scenarios.
-
-Examples of leakage scenarios:
-
--   a feature directly encoding the target variable
--   future information appearing in training data
--   duplicated information between training and testing sets
-
-Example synthetic features:
-
-income\
-income_proxy (leaked feature)\
-future_label\
-duplicated_target
-
-Use in this project:
-
--   testing leakage detection algorithms
--   validating target leakage detection
--   benchmarking toolkit performance
-
-Advantages:
-
--   controlled experimental setup
--   known ground truth leakage
--   easier validation of detection techniques
-
-------------------------------------------------------------------------
-
-## 2. Datasets for LLM Context and Token Optimization
-
-(Riddick Input)
-
-------------------------------------------------------------------------
+---
 
 # Modules
 
-## Fairness Audit
+## 1. Fairness Audit
 
 Evaluates model behavior across demographic groups.
 
-Features: - subgroup performance analysis - fairness metric
-calculation - bias detection reports
+- Computes fairness metrics (e.g., equal opportunity difference, demographic parity ratio)
+- Performs subgroup performance analysis
+- Flags disparities using defined thresholds
 
-Example metrics: - demographic parity - equal opportunity - accuracy
-difference across groups
+> For metric definitions, thresholds, and evaluation criteria, see [`fairness_audit/README.md`](fairness_audit/README.md).
 
-------------------------------------------------------------------------
+---
 
-## Data Leakage Detection
+## 2. Data Leakage Detection
 
-Identifies possible data leakage issues such as: - features strongly
-correlated with the target - future data appearing in training -
-train/test contamination
+Identifies potential sources of leakage in datasets and ML pipelines.
 
-Outputs: - leakage risk report - suspicious feature alerts
+- Detects features strongly correlated with the target
+- Identifies train/test contamination
+- Highlights high-risk features
 
-------------------------------------------------------------------------
+> For detection methods, risk levels, and evaluation criteria, see [`leakage_detection/README.md`](leakage_detection/README.md).
 
-## LLM Context Optimization
+---
 
-(Riddick Input)
+## 3. LLM Context Optimization
 
-------------------------------------------------------------------------
+Riddick Input
 
-## Visualization Dashboard
+---
 
-Displays model evaluation results using a simple interactive interface.
+## 4. Visualization Dashboard
 
-Possible views include: - subgroup performance charts - fairness metrics
-summary - leakage alerts - LLM experiment outputs
+Interactive Streamlit application that displays:
 
-------------------------------------------------------------------------
+- Fairness metrics and subgroup comparisons
+- Leakage risk reports
+- LLM experiment results
+
+---
 
 # Project Timeline (8 Weeks)
 
-## Week 0 --- Project Setup & Architecture
+| Week | Focus | Key Deliverables |
+|---|---|---|
+| 1 | Setup & Architecture | Kickoff meeting, GitHub repo, folder structure, module ownership assigned, environment setup confirmed |
+| 2 | Research & Exploration | Library review, module approach designs, key concepts documented in `/docs` |
+| 3 | Prototype — Part 1 (all modules) | Each module: data loading working, core logic scaffolded, basic output produced — fairness metrics, leakage checks, token importance |
+| 4 | Prototype — Part 2 (all modules) | Each module: full pipeline working, evaluation criteria implemented, demo notebook complete and runnable |
+| 5 | Module Improvement | Refined fairness metrics, improved leakage logic, token experiment tuning |
+| 6 | System Integration & Experiments | Modules connected to dashboard, shared utilities, full experiment runs and results documented |
+| 7 | Documentation & Polish | Final docs, clean repo structure, dashboard polish |
+| 8 | Final Presentation | Slides, demo, architecture summary, findings |
 
--   kickoff meeting
--   finalize architecture
--   setup GitHub repository
--   define folder structure
-
-## Week 1 --- Research & Technical Exploration
-
--   assign module responsibilities
--   review relevant libraries and research papers
--   design module approaches
--   document key concepts in `/docs`
-
-## Week 2 --- Prototype Development
-
--   build initial prototype for each module
--   create first notebooks demonstrating functionality
-
-## Week 3 --- Module Improvement
-
--   refine fairness metrics and subgroup analysis
--   improve leakage detection logic
--   test token context experiments
-
-## Week 4 --- System Integration
-
--   connect modules into unified toolkit
--   create shared utilities
--   integrate outputs with dashboard
-
-## Week 5 --- Experiments & Evaluation
-
--   run experiments on sample datasets
--   evaluate fairness metrics
--   test leakage detection
--   analyze LLM context experiments
-
-## Week 6 --- Documentation & Final System
-
--   clean repository structure
--   finalize documentation
--   polish dashboard and module interfaces
-
-## Week 7 --- Final Presentation
-
--   prepare slides and demo
--   summarize findings
--   present system architecture and experiments
-
-------------------------------------------------------------------------
+---
 
 # Team
 
-Project developed as part of the **GRIDS research initiative**.
+Project developed as part of the **GRIDS**.
 
-------------------------------------------------------------------------
+---
 
 # Contributing
 
-Team members should:
+1. Work within your assigned module folder
+2. Document experiments in the `notebooks/` folder
+3. Add explanations and references in the `docs/` folder
+4. Use GitHub issues to track tasks and progress
 
-1.  Work within their assigned module folder
-2.  Document experiments in the `notebooks` folder
-3.  Add explanations and references in the `docs` folder
-4.  Use GitHub issues to track tasks and progress
-
-------------------------------------------------------------------------
+---
 
 # License
 
