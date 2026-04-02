@@ -549,7 +549,7 @@ missing these fields.
 
 ---
 
-## Important Caveats
+## Important to understand:
 
 **Metric incompatibility.**
 Fairness definitions mathematically conflict. It is impossible to simultaneously
