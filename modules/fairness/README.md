@@ -1,456 +1,442 @@
-# Fairness Module
+# Leakage Detection Module
 
-This module is designed as a practical, first-line fairness audit for tabular machine learning workflows. It focuses on interpretable, implementable metrics that surface bias, error asymmetries, and performance disparities across demographic subgroups, while acknowledging that fairness is inherently context-dependent and requires human judgment to act on.
+This module helps you catch data leakage before it silently inflates model's performance. It runs four checks on your dataset and flags features or patterns that look suspicious. It won't catch every possible form of leakage and it may occasionally flag something that turns out to be fine — but it gives you a structured starting point and forces a documented decision on anything it finds.
 
 ---
 
 ## Files
 
 ```
-modules/fairness/
+modules/leakage/
 │
 ├── src/
-│   ├── fairness_metrics.py         ← Metric computation (EOD, DPR, accuracy diff, error rates)
-│   ├── subgroup_analysis.py        ← Per-group breakdown of accuracy, TPR, FPR, FNR
-│   ├── bias_detection.py           ← Threshold evaluation and flag assignment
-│   ├── fairness_pipeline.py        ← Orchestrator: runs all checks, emits unified report
-│   └── fairness_utils.py           ← Shared helpers (bootstrap CI, base rates, group splits)
+│   ├── target_correlation.py         ← Check 1: features with strong target association
+│   ├── train_test_contamination.py   ← Check 2: duplicate rows across splits
+│   ├── future_information.py         ← Check 3: temporal features postdating prediction time
+│   ├── single_feature_audit.py       ← Check 4: single-feature AUC suspiciously high
+│   ├── leakage_pipeline.py           ← Orchestrator: runs all checks, emits unified report
+│   └── leakage_utils.py              ← Shared helpers (correlation, AUC, hashing, thresholds)
 │
 ├── data/
-│   ├── processed/                  ← Cleaned versions of Adult Income and German Credit
-│   └── subgroup_splits/            ← Pre-split data per sensitive attribute
+│   ├── processed/                    ← Cleaned versions of Adult Income dataset
+│   └── synthetic/                    ← Controlled leakage scenarios for validation
 │
 ├── notebooks/
-│   ├── fairness_exploration.ipynb        ← EDA and subgroup distribution analysis
-│   ├── fairness_metrics_validation.ipynb ← End-to-end pipeline demo (main deliverable)
-│   └── subgroup_analysis.ipynb           ← Deep-dive per sensitive attribute
+│   ├── leakage_exploration.ipynb     ← EDA and leakage signal discovery
+│   ├── leakage_demo.ipynb            ← End-to-end pipeline demo (main deliverable)
+│   └── synthetic_leakage_audit.ipynb ← Functional validation against known-leakage dataset
 │
 ├── outputs/
-│   ├── reports/                    ← JSON reports consumed by the dashboard
-│   ├── plots/                      ← Grouped bar charts, metric scorecards
-│   └── tables/                     ← Per-group metric summaries as CSV
+│   ├── reports/                      ← JSON reports consumed by the dashboard
+│   ├── plots/                        ← Correlation heatmaps, AUC bar charts
+│   └── tables/                       ← Flagged feature summaries as CSV
 │
 ├── tests/
-│   ├── test_fairness_metrics.py
-│   └── test_subgroup_logic.py
+│   ├── test_target_correlation.py
+│   ├── test_contamination.py
+│   └── test_single_feature_auc.py
 │
-└── README.md                       ← this file
+└── README.md                         ← this file
 ```
 
 ---
 
 ## Installation
 
-All dependencies for this module are listed in the root `requirements.txt`. Before running anything, make sure your environment is set up:
+All dependencies for this module are in the root `requirements.txt`. Here's how to get set up:
 
 1. Create and activate a virtual environment from the project root.
-2. Install all dependencies using `pip install -r requirements.txt`.
-3. Confirm that `fairlearn` and `scikit-learn` are installed correctly by checking their versions in your environment.
-4. `aif360` is an optional dependency used only if you need in-processing mitigation algorithms. It is not required for the core metric pipeline — `fairlearn` covers all four metrics in this module.
-
-If you encounter dependency conflicts between `fairlearn` and `aif360`, install them in separate environments and run only what you need for your task.
+2. Run `pip install -r requirements.txt` to install everything.
+3. Double-check that `scikit-learn`, `pandas`, and `scipy` installed correctly by checking their versions.
+4. `great-expectations` is optional. It's useful if you want to add formal data contracts on top of the checks this module already does, but it has a lot of setup overhead. You don't need it to run the core pipeline — `pandas` and `scipy` handle everything.
 
 ---
 
 ## Implementation Instructions
 
-This section describes what you need to build and in what order. We will the fairlearn and scikit-learn documentation linked in the References section for implementation guidance.
+This section walks you through what to build and in what order. There's no code here — use the scikit-learn, pandas, and scipy documentation linked in the References section to figure out the specifics as you go.
 
-**Step 1 — Set up the data pipeline**
-Load the Adult Income and German Credit datasets from UCI. Clean each dataset: handle missing values, encode categorical columns, and separate the target column from the features. Do not touch the sensitive attribute columns beyond ensuring they are clean and consistently labeled. Create an 80/20 stratified train/test split using a fixed random seed so results are reproducible across runs.
+**Step 1 — Load and prepare the data**
+Download the Adult Income dataset from UCI. Clean it: handle missing values, encode categorical columns, and make sure the target column is separated from the features. Create an 80/20 stratified train/test split with a fixed random seed. Keep both splits as separate DataFrames — the pipeline takes them as distinct inputs. Don't shuffle or merge them after splitting.
 
-**Step 2 — Train a baseline classifier**
-Train a logistic regression classifier on the training split using only non-sensitive features. Do not include `sex`, `race`, or `personal_status` as model inputs — these are only used for evaluation, never for training. Generate predictions on the test split and attach them to your test DataFrame as a new column.
+**Step 2 — Build the synthetic dataset first**
+Before you write any check logic, build the synthetic dataset in `data/synthetic/`. You need three versions: one where a column is basically a noisy copy of the target label, one where 5% of test rows are exact duplicates from the training set, and one where a date column contains values that go past the reference date. Build this dataset first because you'll use it to test each check as you build it — it's much easier to debug that way.
 
-**Step 3 — Implement the metric functions in `fairness_metrics.py`**
-Implement each of the four metrics as standalone functions that accept ground truth labels, predicted labels, and a sensitive feature Series as inputs. Use fairlearn's `MetricFrame` to compute per-group metrics. Refer to the formulas and thresholds defined in this README. Each function should return a dictionary containing the metric value, confidence interval, and status (PASS / WARNING / FLAG).
+**Step 3 — Build Check 1 in `target_correlation.py`**
+For every feature column, measure how strongly it's correlated with the target. Use Pearson correlation for numeric features and Spearman correlation for categorical ones (after encoding). Assign each feature a severity level based on the threshold bands in the Thresholds Reference section and return the raw correlation values alongside the severity for the report.
 
-**Step 4 — Implement bootstrap confidence intervals in `fairness_utils.py`**
-For each metric function, wrap the computation in a bootstrap loop (1,000 iterations). On each iteration, resample the test set with replacement and recompute the metric. Use the 2.5th and 97.5th percentiles of the resulting distribution as the confidence interval bounds. Return the CI half-width alongside the metric value.
+**Step 4 — Build Check 2 in `train_test_contamination.py`**
+Hash every row in the train and test DataFrames (all feature columns, not the target). Count how many row hashes appear in both sets, compute the contamination ratio as `duplicate_rows / len(df_test)`, and assign a severity level. Return the count, ratio, and severity.
 
-**Step 5 — Implement subgroup analysis in `subgroup_analysis.py`**
-Compute per-group accuracy, TPR, FPR, and FNR by splitting the test set on the sensitive feature and computing a confusion matrix for each group. These values feed directly into the JSON output schema — make sure the keys match exactly.
+**Step 5 — Build Check 3 in `future_information.py`**
+Take a list of datetime column names and a `reference_date`. For each column, check whether any values go past that date and flag the ones that do. Make both parameters optional — if the user doesn't provide them, the check should report itself as SKIPPED, not LOW or PASS.
 
-**Step 6 — Implement the interpretability layer in `bias_detection.py`**
-Apply the thresholds from `fairness_utils.py` to each metric value and assign PASS, WARNING, or FLAG status. Generate a human-readable direction-of-harm string for each flagged or warning metric that names the disadvantaged group and describes the type of disparity.
+**Step 6 — Build Check 4 in `single_feature_audit.py`**
+For each feature, train a logistic regression using only that one feature on the training split, then check its ROC-AUC on the test split. Assign a severity level based on the AUC threshold bands. To keep this from taking too long, only run this check on features that already came back MEDIUM or HIGH from Check 1, plus a small random sample of the rest. Note this decision in your notebook.
 
-**Step 7 — Build the pipeline orchestrator in `fairness_pipeline.py`**
-Wire together steps 3–6 into a single class that runs all checks in sequence and assembles the full JSON report. The report must conform exactly to the Standard Output Schema defined in this README. Implement a `save_report()` method that writes the JSON to `reports/fairness/<timestamp>_<dataset>.json`.
+**Step 7 — Set up shared helpers in `leakage_utils.py`**
+Put the threshold constants in one place so every check reads from the same source. Add helper functions for row hashing, correlation, and any formatting you reuse across checks. The `LEAKAGE_THRESHOLDS` dictionary from this README should live here and be imported by each check module — don't hardcode values inside the individual files.
 
-**Step 8 — Write the demo notebook**
-In `notebooks/fairness_metrics_validation.ipynb`, demonstrate the full pipeline end-to-end: load Adult Income → train model → generate predictions → run FairnessPipeline for `sex` → run again for `race` → save both reports → print a summary. This notebook is the primary deliverable for the Week 4 milestone.
+**Step 8 — Build the pipeline in `leakage_pipeline.py`**
+Create a class that takes the train DataFrame, test DataFrame, target column name, and optional temporal parameters. Run all four checks in sequence, collect their outputs, compute `overall_risk` using the aggregation logic from the Risk Levels section, and assemble the full JSON report. Add a `save_report()` method that writes to `reports/leakage/<timestamp>_<dataset>.json`. The report must match the Standard Output Schema in this README exactly.
 
-**Step 9 — Validate against fairlearn baselines**
-Cross-check your EOD and DPR values against fairlearn's built-in `equalized_odds_difference` and `demographic_parity_ratio` functions called directly on the same data. Results should match within ±0.01. Document this validation in `notebooks/fairness_metrics_validation.ipynb`.
+**Step 9 — Write the demo notebook**
+In `notebooks/leakage_demo.ipynb`, show the full flow: load Adult Income → split the data → run `LeakagePipeline` → save the report → print a readable summary of what was flagged. This is your main Week 4 deliverable.
+
+**Step 10 — Validate with the synthetic dataset**
+In `notebooks/synthetic_leakage_audit.ipynb`, run the pipeline against all three synthetic scenarios. Each check must return HIGH for the leakage it was built to catch. If one doesn't fire, the problem is in the implementation logic — go back and fix it before touching the threshold values. Write up the validation results as a table in the notebook.
 
 ---
 
-Before running this module, you need to have completed three steps: loaded and cleaned your dataset, trained a classifier on the training split, and generated predictions on the test split. The pipeline takes those predictions as input — it does not train a model itself.
+## How to Use
 
-Once predictions are ready, instantiate the pipeline for one sensitive attribute at a time. Fairness metrics are always computed per attribute independently — do not combine attributes in a single run.
+Before running this module, you need two things ready: the dataset loaded and split into separate train and test DataFrames, and the target column identified and confirmed as binary. Unlike the fairness module, you do not need a trained model or predictions — the leakage pipeline operates directly on the raw data and the split itself.
+
+If you want to run Check 3, you also need to identify which columns in your dataset are datetime columns and confirm your `reference_date` — the moment at which a prediction would actually be made in production. Do not guess this value; confirm it with whoever defined the data pipeline.
 
 ```python
-from modules.fairness.src.fairness_pipeline import FairnessPipeline
+from modules.leakage.src.leakage_pipeline import LeakagePipeline
 
-pipeline = FairnessPipeline(
-    df=df,                                  # test split only, with predictions attached
-    target_col="income",                    # ground truth column
-    prediction_col="predicted_income",      # model output column
-    sensitive_feature="sex",               # one attribute per run
+pipeline = LeakagePipeline(
+    df_train=train_df,
+    df_test=test_df,
+    target_col="income",
+    datetime_cols=["transaction_date"],     # optional — omit if no temporal columns
+    reference_date="2023-01-01",            # optional — required only for Check 3
 )
 
-report = pipeline.run_all_metrics()
+report = pipeline.run_all_checks()
 pipeline.save_report(report, dataset="adult_income")
-print(report["status"])                     # PASS | FAIL | WARNING
+print(report["overall_risk"])               # HIGH | MEDIUM | LOW
 ```
 
-Repeat the run for each sensitive attribute (e.g., call once with `"sex"`, once with `"race"`).
-Each run produces a separate JSON report. Each metric can also be computed independently — see `src/fairness_metrics.py`.
+Each check can also be run independently — see the individual `src/` files.
+All thresholds can be overridden by passing a custom `thresholds` dict to `LeakagePipeline`.
 
 ---
 
-## What Is Fairness Auditing?
+## What Is Data Leakage?
 
-A model that achieves high overall accuracy may still behave differently
-across demographic subgroups. Without subgroup-level evaluation, these
-disparities go undetected until they cause harm.
+Data leakage occurs when information that would not be legitimately available at
+prediction time is used during model training. Kaufman et al. (2012) define it as
+the use of information in the model training process which would not be expected
+to be available at prediction time. The result is a model that appears to perform
+well in evaluation but fails in production.
 
-Fairness auditing surfaces those disparities by computing group-level
-metrics alongside global ones. The goal is not to prove a model is fair —
-no metric set can do that — but to make disparities visible and force
-an intentional decision about them.
+Leakage is not always obvious. It can enter the pipeline through:
+
+- A feature that directly encodes the target (e.g., `approved_flag` predicts `approved`)
+- Train and test data that share rows (contamination)
+- A timestamp that reflects information only known after the prediction event
+- A feature that, by itself, nearly perfectly separates the target classes
+
+As Kapoor and Narayanan (2023) document, leakage is often subtle and tied to
+workflow and evaluation design — not just feature-level anomalies. Detection
+therefore requires both statistical checks and human judgment.
 
 **Why this matters:**
-A model that correctly identifies 79% of qualified male applicants
-but only 65% of equally qualified female applicants is not a success.
-The overall accuracy number will not reveal this.
+A model with 99% accuracy trained on leaked data is not a success — it is a
+silent failure waiting to be deployed.
 
 ---
 
-## Metrics
+## Detection Methods
 
-This module computes four complementary fairness metrics.
-No single metric is sufficient — all must be reported together.
+This module runs four complementary checks. No single check is sufficient.
+All four must be run and reported together.
 
 ---
 
-### 1. Equal Opportunity Difference (Primary)
+### Check 1 — Target Correlation
 
-**What it measures:**
-The difference in True Positive Rate (TPR) between the most and least
-favored groups. TPR is the probability that a truly positive individual
-is correctly classified as positive.
+**What it detects:**
+Features with unusually strong statistical association to the target, which may
+indicate direct target encoding, proxy leakage, or a legitimately strong predictor
+requiring manual review. This is the most common entry point for leakage in
+tabular datasets.
 
-```
-Equal Opportunity Difference = TPR(privileged group) − TPR(unprivileged group)
-```
+**How it works:**
+- For continuous features: compute Pearson correlation with the target
+- For categorical features: compute Spearman rank correlation after encoding
+- Assign a severity band based on the magnitude of |r|
 
-**Why it is primary:**
-For merit-based tasks (income prediction, credit risk), the central fairness
-concern is whether equally qualified individuals are treated equally.
-Equal opportunity focuses exactly on that: are qualified individuals in each group
-being correctly identified at the same rate?
+**Severity bands:**
 
-**Threshold:**
-
-```python
-EQUAL_OPPORTUNITY_THRESHOLD = 0.10   # flag if |EOD| > 0.10
-```
-
-**Risk levels:**
-
-| Level | Condition | Meaning |
+| Severity | Condition | Meaning |
 |---|---|---|
-| PASS | \|EOD\| ≤ 0.10 | Groups have similar TPR |
-| WARNING | 0.10 < \|EOD\| ≤ 0.15 | Moderate disparity — investigate |
-| FLAG | \|EOD\| > 0.15 | Significant disparity — act before deployment |
+| LOW | \|r\| < 0.85 | No strong association signal |
+| MEDIUM | 0.85 ≤ \|r\| < 0.95 | Elevated association — review feature origin |
+| HIGH | \|r\| ≥ 0.95 | Very strong association — likely requires investigation |
+
+**Why this is only a heuristic:**
+Correlation measures statistical strength, not causal structure. A feature like
+`credit_score` may legitimately reach r = 0.90 with a credit risk target without
+any leakage. Whether a strong correlation represents leakage depends on *when*
+the feature becomes available relative to the prediction event — a question that
+cannot be answered by correlation alone.
+
+**Recommended next steps when flagged:**
+- Inspect the feature's origin: when was it created, and by what process?
+- Verify whether the feature is derived *after* the target event (e.g., a post-approval flag)
+- Run an ablation test: retrain the model without the flagged feature and compare performance
+- Document explicitly whether the feature is available at prediction time
 
 **Example output:**
 
 ```
-Equal Opportunity Difference : 0.14 ± 0.03   ← WARNING
-→ Model favors Male group in correctly identifying positives
-→ Female group is under-selected despite qualification
+Target Correlation Check:
+  income_encoded     : r = 0.99   → HIGH
+  capital_gain       : r = 0.87   → MEDIUM
+  education_num      : r = 0.34   → LOW
 ```
-
-**Important:**
-EOD is asymmetric — it tells you the direction of harm, not just the magnitude.
-Always report which group is disadvantaged, not just the absolute value.
 
 ---
 
-### 2. Demographic Parity Ratio (Secondary)
+### Check 2 — Train/Test Contamination
 
-**What it measures:**
-The ratio of positive prediction rates between the unprivileged and privileged groups.
-A ratio of 1.0 means both groups receive positive predictions at the same rate.
+**What it detects:**
+Exact row duplicates shared between the training set and the test set.
+When the model has seen test rows during training, evaluation metrics are
+inflated and do not reflect true generalization.
 
-```
-Demographic Parity Ratio = P(Ŷ=1 | unprivileged) / P(Ŷ=1 | privileged)
-```
+**How it works:**
+- Hash each row in train and test (all columns, or a specified key subset)
+- Count overlapping hashes
+- Compute the contamination ratio: `duplicate_rows / len(df_test)`
+- Assign a severity band based on the ratio
 
-**Why it is secondary:**
-Demographic parity is an important complementary signal, but it is not always
-the right optimization target. When base rates differ between groups (as they do
-in Adult Income), enforcing equal prediction rates is not equivalent to enforcing
-equal treatment. It is reported for context, not for optimization.
+**Severity bands:**
 
-**Threshold:**
-
-```python
-DEMOGRAPHIC_PARITY_RATIO_THRESHOLD = 0.80   # flag if ratio < 0.80
-```
-
-**Risk levels:**
-
-| Level | Condition | Meaning |
+| Severity | Condition | Meaning |
 |---|---|---|
-| PASS | DPR ≥ 0.80 | Prediction rates broadly comparable |
-| WARNING | 0.70 ≤ DPR < 0.80 | Borderline — document and monitor |
-| FLAG | DPR < 0.70 | Substantial prediction rate gap |
+| LOW | contamination ratio = 0% | No detected duplicates |
+| MEDIUM | 0% < ratio ≤ 1% | Small overlap — review split logic |
+| HIGH | ratio > 1% | Substantial overlap — evaluation results are unreliable |
+
+**Why this is only a heuristic:**
+Full-row hashing catches identical rows but not near-duplicates (same entity,
+slightly different values) or entity-level contamination (same person appearing
+in both train and test with different rows). A 0% result does not guarantee a
+clean split — it guarantees no identical rows.
+
+**Recommended next steps when flagged:**
+- Verify whether duplicates come from expected repeated entities, data versioning
+  errors, or actual cross-split leakage
+- If entities can appear multiple times (e.g., one customer with multiple loans),
+  rebuild the split using entity-level keys rather than row-level sampling
+- Re-evaluate model performance after rebuilding the split
+- Document the deduplication policy in the experiment log
 
 **Example output:**
 
 ```
-Demographic Parity Ratio : 0.73   ← Borderline
-→ Female group receives positive predictions at 73% the rate of Male group
+Train/Test Contamination Check:
+  Test rows        : 8,141
+  Duplicate rows   : 97
+  Contamination    : 1.19%   → HIGH
 ```
-
-**Important:**
-Interpreting DPR requires knowing the base rates. If the Male base rate is 0.42
-and Female is 0.28, a DPR below 1.0 does not automatically indicate unfairness.
-Always read DPR alongside the Base Rate Awareness section.
 
 ---
 
-### 3. Accuracy Difference Across Groups (Tertiary)
+### Check 3 — Future Information Detection
 
-**What it measures:**
-The absolute difference in classification accuracy between the best-performing
-and worst-performing subgroup.
+**What it detects:**
+Temporal features that encode information from after the prediction event.
+This form of leakage is common in financial and healthcare pipelines where
+event timestamps are appended during data collection — after outcomes are known —
+rather than at the moment of prediction.
 
-```
-Accuracy Difference = Accuracy(best group) − Accuracy(worst group)
-```
+**How it works:**
+- Accept a list of known datetime columns and a `reference_date`
+- For each datetime column, identify values that postdate `reference_date`
+- Assign a severity band based on the fraction and pattern of future-dated values
 
-**Why it is tertiary:**
-Accuracy differences are easy to communicate to non-technical stakeholders and
-provide a useful sanity check. However, accuracy can be misleading on imbalanced
-datasets and does not capture which type of error is driving the gap.
-It is reported for transparency, not for threshold-based decisions.
+**Severity bands:**
 
-**Threshold:**
+| Severity | Condition | Meaning |
+|---|---|---|
+| LOW | No future-dated values | No temporal inconsistency detected |
+| MEDIUM | Small or isolated fraction of future-dated values, or reference date uncertain | Investigate date definitions and collection timing |
+| HIGH | Systematic future-dated values clearly beyond the prediction point | Temporal leakage likely present |
 
-```python
-ACCURACY_DIFFERENCE_THRESHOLD = 0.05   # flag if gap > 5%
-```
+**Why this is only a heuristic:**
+This check is entirely dependent on `reference_date` being set correctly.
+If `reference_date` does not reflect the true moment of prediction, the check
+may produce false positives (legitimate dates flagged) or false negatives
+(actual future dates missed). Time zone differences and logging delays can
+also produce apparent future dates that do not represent real leakage.
+
+**Recommended next steps when flagged:**
+- Confirm the definition of the prediction timestamp with the team that built
+  the data pipeline — do not assume
+- Review the full data collection timeline to understand when each datetime
+  column is populated
+- Remove or temporally shift any column not available at decision time
+- If the reference date is uncertain, run the check with multiple candidate dates
+  and document the sensitivity
 
 **Example output:**
 
 ```
-Accuracy Difference : 0.06   ← Investigate
-  Male   : 0.87
-  Female : 0.81
+Future Information Check:
+  reference_date        : 2023-01-01
+  transaction_date      : max = 2023-06-15 (systematic)   → HIGH
+  account_open_date     : max = 2020-11-30                → LOW
 ```
-
-**Important:**
-A 6% accuracy gap sounds small but may reflect a systematic disadvantage.
-Always drill into FPR and FNR to understand what is driving it.
 
 ---
 
-### 4. Error Rate Disparity (Diagnostic)
+### Check 4 — Single-Feature AUC Audit
 
-**What it measures:**
-Two complementary error-rate gaps across groups:
+**What it detects:**
+A feature that, when used as the sole predictor in a minimal classifier,
+achieves very high discriminative power. This is a strong warning signal that
+the feature may encode target information too directly — but interpretation
+depends on the domain and the dataset's class balance.
 
-- **FPR Difference** — difference in False Positive Rate (rate of incorrect positive classifications)
-- **FNR Difference** — difference in False Negative Rate (rate of missed positive cases)
+**How it works:**
+- For each feature, train a logistic regression using only that feature
+- Compute ROC-AUC on held-out data
+- Assign a severity band based on the AUC value
 
-```
-FPR Difference = FPR(unprivileged) − FPR(privileged)
-FNR Difference = FNR(unprivileged) − FNR(privileged)
-```
+**Severity bands:**
 
-Both formulas follow the same convention: unprivileged minus privileged.
-A positive value means the unprivileged group bears a higher error rate.
-A negative value means the privileged group bears a higher error rate — report it as such.
+| Severity | Condition | Meaning |
+|---|---|---|
+| LOW | AUC < 0.80 | No strong single-feature signal |
+| MEDIUM | 0.80 ≤ AUC < 0.95 | Notable single-feature power — review feature provenance |
+| HIGH | AUC ≥ 0.95 | Very strong signal — investigate before training |
 
-**Why it is diagnostic:**
-FPR and FNR reveal the type of harm being imposed. In credit and income contexts:
-- High FPR for a group → over-penalization (false accusations of risk)
-- High FNR for a group → under-recognition (missed qualification)
+**Why this is only a heuristic:**
+A very high single-feature AUC is unusual in real-world tabular data and often
+signals a problem, but it may also reflect a legitimately dominant predictor in
+certain domains. On highly imbalanced datasets, ROC-AUC can understate or obscure
+the severity of the signal; precision-recall analysis may be more informative in
+those cases (Saito & Rehmsmeier, 2015). PR-AUC is noted here as a future extension.
 
-These are qualitatively different harms. Reporting them together exposes
-whether the model is failing a group by punishing it more or by recognizing
-it less.
-
-**Thresholds:**
-
-```python
-FPR_DIFFERENCE_THRESHOLD = 0.10   # flag if |FPR diff| > 0.10
-FNR_DIFFERENCE_THRESHOLD = 0.10   # flag if |FNR diff| > 0.10
-```
+**Recommended next steps when flagged:**
+- Inspect the semantic meaning of the feature and its relationship to the outcome
+- Verify whether the feature is a transformed or encoded version of the target
+- Run an ablation test: retrain the full model without the flagged feature
+  and compare held-out performance — a large drop confirms dependence
+- Document the finding even if the feature is ultimately retained
 
 **Example output:**
 
 ```
-FPR Difference : 0.12   ← FLAG
-→ One group experiences elevated false positive rate
-→ Suggests potential over-penalization
-
-FNR Difference : 0.09   ← Investigate
-→ One group has more missed positive cases
-→ Suggests under-recognition among qualified individuals
+Single-Feature AUC Audit:
+  target_encoded_col : AUC = 0.99   → HIGH
+  capital_gain       : AUC = 0.81   → MEDIUM
+  age                : AUC = 0.62   → LOW
 ```
 
 ---
 
-## Thresholds Summary
+## Risk Levels
+
+Each check produces a severity level (LOW / MEDIUM / HIGH) per feature or column.
+The pipeline aggregates these into a single overall risk rating for the dataset.
+
+| Level | Meaning | Required action |
+|---|---|---|
+| **HIGH** | Strong statistical signal consistent with leakage | Investigate before training; document decision to retain or remove |
+| **MEDIUM** | Elevated signal — could be leakage or a legitimate strong predictor | Review manually; record the rationale |
+| **LOW** | No strong leakage signal detected | Proceed, noting that LOW does not guarantee absence of leakage |
+
+**Overall risk aggregation logic:**
 
 ```python
-FAIRNESS_THRESHOLDS = {
-    "equal_opportunity_difference":   0.10,   # flag if |EOD| > 0.10
-    "demographic_parity_ratio":       0.80,   # flag if ratio < 0.80
-    "accuracy_difference":            0.05,   # flag if gap > 5%
-    "fpr_difference":                 0.10,   # flag if |FPR diff| > 0.10
-    "fnr_difference":                 0.10,   # flag if |FNR diff| > 0.10
+if any check returns HIGH:
+    overall_risk = "HIGH"
+elif any check returns MEDIUM:
+    overall_risk = "MEDIUM"
+else:
+    overall_risk = "LOW"
+```
+
+---
+
+## Thresholds Reference
+
+All thresholds are heuristic. They are defined in `src/leakage_utils.py`
+and can be overridden at instantiation time.
+
+```python
+LEAKAGE_THRESHOLDS = {
+    # Check 1 — Target Correlation
+    "target_correlation_medium": 0.85,    # |r| >= this → MEDIUM
+    "target_correlation_high":   0.95,    # |r| >= this → HIGH
+
+    # Check 2 — Train/Test Contamination
+    "duplicate_row_ratio_medium": 0.0,    # any duplicate → MEDIUM
+    "duplicate_row_ratio_high":   0.01,   # ratio > 1% → HIGH
+
+    # Check 3 — Future Information
+    # MEDIUM: any future-dated value or uncertain reference date
+    # HIGH: clear systematic future-dated values
+
+    # Check 4 — Single-Feature AUC
+    "single_feature_auc_medium": 0.80,    # AUC >= this → MEDIUM
+    "single_feature_auc_high":   0.95,    # AUC >= this → HIGH
 }
 ```
-
-Thresholds are defined in `src/fairness_utils.py` and can be overridden when
-instantiating `FairnessPipeline`.
-
----
-
-## Base Rate Awareness
-
-The module reports base rates per group before any metric computation:
-
-```
-Base rates (P(Y=1)):
-  Male   : 0.42
-  Female : 0.28
-```
-
-**Why this matters:**
-Differences in base rates explain why fairness metrics can conflict.
-Demographic parity requires equal prediction rates across groups — but if one
-group genuinely has more positive cases in the data, enforcing equal rates means
-either over-predicting for the lower-base-rate group or under-predicting for the
-higher-base-rate group. Neither is obviously fair.
-
-Always read fairness metrics in light of base rates. A DPR of 0.73 when base
-rates are 0.42 vs. 0.28 carries a different interpretation than the same DPR
-when base rates are equal.
-
----
-
-## Statistical Confidence
-
-All reported fairness metrics include uncertainty estimates computed via
-bootstrap resampling (1,000 iterations by default):
-
-```
-Equal Opportunity Difference : 0.14 ± 0.03
-Demographic Parity Ratio     : 0.73 ± 0.04
-FPR Difference               : 0.12 ± 0.02
-```
-
-**Why this matters:**
-A metric value of 0.11 that just crosses the 0.10 threshold should be
-interpreted differently from a value of 0.20. Confidence intervals prevent
-over-reaction to borderline values and under-reaction to large ones.
-
-If the confidence interval of a flagged metric crosses the threshold, mark the
-finding as WARNING rather than FLAG and note the uncertainty in the report.
-
----
-
-## Direction of Harm (Interpretability Layer)
-
-Every metric output includes a human-readable interpretation that names the
-disadvantaged group and describes the type of harm:
-
-```
-Equal Opportunity Difference : 0.14
-→ Model favors Male group in correctly identifying positives
-→ Female group is under-selected despite qualification
-
-FPR Difference : 0.12
-→ Elevated false positive rate for Female group
-→ Suggests potential over-penalization of one group
-```
-
-This layer exists because a number alone is not actionable. Stakeholders need to
-understand who is harmed and how before they can decide what to do about it.
-
----
-
-## Metric Selection Rationale
-
-Equal Opportunity Difference is the primary metric for both datasets because:
-
-- Both tasks are merit-based (income prediction, credit risk)
-- The fairness concern is whether equally qualified individuals are treated equally
-- Demographic parity is not appropriate when base rates differ between groups
-- EOD directly measures the gap in correct identification of qualified individuals
-
-Other metrics are reported for context and completeness, not for optimization.
-Attempting to optimize all metrics simultaneously will result in trade-offs that
-make the model worse on the primary concern.
 
 ---
 
 ## Standard Output Schema
 
-Every pipeline run emits a JSON report to `reports/fairness/<timestamp>_<dataset>.json`.
-This schema must be respected — it is what the dashboard reads.
+Every pipeline run emits a JSON report to `reports/leakage/<timestamp>_<dataset>.json`.
+This schema is required for dashboard integration — do not omit any field.
 
 ```json
 {
-  "module": "fairness",
+  "module": "leakage",
   "dataset": "adult_income",
-  "sensitive_feature": "sex",
-  "model": "LogisticRegression",
   "timestamp": "2024-11-01T14:32:00Z",
   "status": "FAIL",
-  "summary": "Significant equal opportunity gap detected: Female group correctly identified at 14pp lower rate than Male group.",
-  "base_rates": {
-    "Male": 0.42,
-    "Female": 0.28
+  "summary": "HIGH risk detected: target_encoded_col flagged by correlation and AUC checks.",
+  "checks": {
+    "target_correlation": {
+      "flagged_features": ["target_encoded_col"],
+      "max_correlation": 0.99,
+      "risk": "HIGH"
+    },
+    "train_test_contamination": {
+      "duplicate_rows": 0,
+      "contamination_ratio": 0.0,
+      "risk": "LOW"
+    },
+    "future_information": {
+      "flagged_columns": [],
+      "risk": "LOW"
+    },
+    "single_feature_auc": {
+      "flagged_features": ["target_encoded_col"],
+      "max_auc": 0.99,
+      "risk": "HIGH"
+    }
   },
-  "metrics": {
-    "equal_opportunity_difference": {"value": 0.14, "ci": 0.03, "status": "WARNING"},
-    "demographic_parity_ratio":     {"value": 0.73, "ci": 0.04, "status": "WARNING"},
-    "accuracy_difference":          {"value": 0.06, "ci": 0.02, "status": "FLAG"},
-    "fpr_difference":               {"value": 0.12, "ci": 0.02, "status": "FLAG"},
-    "fnr_difference":               {"value": 0.09, "ci": 0.03, "status": "WARNING"}
-  },
-  "subgroup_accuracy": {
-    "Male": 0.87,
-    "Female": 0.81
-  },
-  "subgroup_tpr": {
-    "Male": 0.79,
-    "Female": 0.65
-  },
-  "subgroup_fpr": {
-    "Male": 0.14,
-    "Female": 0.26
-  },
-  "subgroup_fnr": {
-    "Male": 0.21,
-    "Female": 0.35
-  },
-  "flags": ["accuracy_difference", "fpr_difference"],
+  "overall_risk": "HIGH",
   "recommendations": [
-    "Investigate feature engineering for sex-correlated proxies.",
-    "Consider post-processing threshold adjustment to equalize TPR across groups.",
-    "Re-evaluate on German Credit dataset to check whether pattern generalizes."
+    "Inspect provenance of target_encoded_col — flagged by both correlation and AUC checks.",
+    "Run ablation test: retrain without this feature and compare held-out performance.",
+    "Re-run leakage pipeline after removal to confirm overall risk drops to LOW."
+  ],
+  "recommended_action": [
+    "Inspect feature provenance",
+    "Run ablation without flagged feature",
+    "Re-run pipeline after remediation"
   ]
 }
 ```
+
+**Status mapping:**
+
+| `overall_risk` | `status` |
+|---|---|
+| HIGH | FAIL |
+| MEDIUM | WARNING |
+| LOW | PASS |
 
 ---
 
@@ -458,129 +444,143 @@ This schema must be respected — it is what the dashboard reads.
 
 ### Adult Income Dataset (UCI ML Repository)
 
-Primary benchmark for subgroup fairness evaluation.
+Primary benchmark for leakage checks on real-world tabular data. Predicts whether an individual earns more than $50,000/year. Attributes include age, education, occupation, marital status, race, and gender.
 
 - **Target:** `income` (binary: ≤50K / >50K)
-- **Sensitive features:** `sex` (binary), `race` (multi-class — evaluate pairwise)
-- **Known consideration:** The dataset reflects 1994 U.S. census data. The
-  `sex` column is binary and does not capture gender identity. `race` categories
-  are simplified encodings of complex social categories. Acknowledge these
-  limitations in the final report.
-- **Split:** 80/20 stratified split, fixed random seed for reproducibility
+- **Sensitive features:** `sex`, `race`
+- **Known risk:** `fnlwgt` (census sampling weight) may produce elevated correlations
+  — investigate before treating as leakage; it is a sampling artifact, not a target proxy
+- **Split:** 80/20 stratified split; fix the random seed for reproducibility
 
-### German Credit Dataset
+### Synthetic Leakage Dataset
 
-Secondary benchmark for fairness in financial decision systems.
+Generated to simulate controlled leakage scenarios for testing and validating the leakage detection module. Three scenarios are implemented:
 
-- **Target:** credit risk (binary: good / bad)
-- **Sensitive features:** `age`, `personal_status` (encodes gender and marital status)
-- **Known consideration:** `personal_status` conflates gender and marital status.
-  Separate these when possible — do not treat `personal_status` as a single
-  sensitive attribute without acknowledging what it encodes.
-- **Split:** 80/20 stratified split, fixed random seed
+| Scenario | Injection | Check(s) expected to fire | Success criterion |
+|---|---|---|---|
+| Direct encoding | Feature set equal to label ± small noise | Check 1 and Check 4 | Both return HIGH |
+| Train/test duplication | 5% of test rows copied from train | Check 2 | Contamination ratio ≥ 0.05, returns HIGH |
+| Future timestamp | Date column includes systematic post-prediction dates | Check 3 | Column flagged as HIGH |
+
+If a check does not fire on its corresponding synthetic scenario, the implementation
+is incorrect — not the threshold.
+
+Synthetic validation does not prove generalization to all datasets, but it does
+verify that the implemented logic responds correctly to controlled leakage patterns.
+The goal is not to claim the tool catches all leakage, but to confirm it catches
+the leakage it was specifically designed to detect.
 
 ---
 
 ## Example Full Output
 
 ```
-Dataset             : adult_income
-Sensitive attribute : sex
-Groups detected     : ['Male', 'Female']
-Timestamp           : 2024-11-01T14:32:00Z
+Dataset            : adult_income
+Timestamp          : 2024-11-01T14:32:00Z
 
---- Base Rates ---
-  Male   : 0.42
-  Female : 0.28
+--- Check 1: Target Correlation ---
+  target_encoded_col : r = 0.99   → HIGH
+  capital_gain       : r = 0.87   → MEDIUM
+  education_num      : r = 0.34   → LOW
 
---- Metric Results ---
-Equal Opportunity Difference  :  0.14 ± 0.03   ← WARNING
-Demographic Parity Ratio      :  0.73 ± 0.04   ← Borderline
-Accuracy Difference           :  0.06 ± 0.02   ← FLAG
-FPR Difference                :  0.12 ± 0.02   ← FLAG
-FNR Difference                :  0.09 ± 0.03   ← Investigate
+--- Check 2: Train/Test Contamination ---
+  Test rows          : 8,141
+  Duplicate rows     : 0
+  Contamination      : 0.00%     → LOW
 
---- Interpretation ---
-→ Model favors Male group in correctly identifying positives
-→ Female group is under-selected despite qualification
-→ Elevated FPR for Female group indicates potential over-penalization
-→ Confidence intervals do not cross thresholds — findings are stable
+--- Check 3: Future Information ---
+  No datetime columns provided.  → SKIPPED
 
---- Per-Group Results ---
-  Accuracy  |  Male: 0.87   Female: 0.81
-  TPR       |  Male: 0.79   Female: 0.65
-  FPR       |  Male: 0.14   Female: 0.26
-  FNR       |  Male: 0.21   Female: 0.35
+--- Check 4: Single-Feature AUC ---
+  target_encoded_col : AUC = 0.99   → HIGH
+  capital_gain       : AUC = 0.81   → MEDIUM
+  age                : AUC = 0.62   → LOW
 
---- Status ---
-  FAIL — 2 metrics flagged, 3 at WARNING level
+--- Overall Risk ---
+  HIGH
 
 --- Recommendations ---
-  → Investigate sex-correlated proxy features in feature set
-  → Consider post-processing threshold adjustment for TPR equalization
-  → Re-run audit on German Credit to assess generalizability
+  → Inspect provenance of target_encoded_col (flagged by two independent checks).
+  → Run ablation: retrain without target_encoded_col and compare performance.
+  → Re-run pipeline after remediation to confirm risk drops to LOW.
 ```
 
 ---
 
 ## Evaluation Criteria
 
-The module is evaluated on three dimensions:
+The module is evaluated on three dimensions.
 
-**1. Metric correctness (against known baselines)**
+### 1. Functional Validation (Against Synthetic Dataset)
 
-| Metric | Pass condition |
-|---|---|
-| Equal Opportunity Difference | Matches fairlearn `equalized_odds_difference` output within ±0.01 |
-| Demographic Parity Ratio | Matches fairlearn `demographic_parity_ratio` within ±0.01 |
-| FPR / FNR Difference | Consistent with manual per-group confusion matrix computation |
+Each check must fire when the corresponding leakage is injected:
 
-**2. Confidence interval coverage**
+| Scenario | Injection amount | Expected check result | Pass condition |
+|---|---|---|---|
+| Direct encoding | Feature ≈ label | Check 1 HIGH, Check 4 HIGH | Both checks return HIGH |
+| Duplication | 5% of test rows | Check 2 HIGH | Contamination ratio ≥ 0.05 |
+| Future timestamp | Systematic future dates | Check 3 HIGH | Column flagged as HIGH |
 
-Bootstrap CI must be reported for all primary and secondary metrics.
-CI width should be ≤ 0.05 for datasets of standard size (n > 5,000).
+### 2. False-Positive Discipline
 
-**3. Output schema compliance**
+Running the pipeline on the clean Adult Income dataset (no injected leakage,
+standard 80/20 split, no engineered leakage features) must produce:
 
-Every report file must parse as valid JSON and include all required fields:
-`module`, `dataset`, `sensitive_feature`, `timestamp`, `status`, `summary`,
-`metrics`, `flags`, `recommendations`. The dashboard will reject reports
-missing these fields.
+```
+overall_risk = LOW
+```
+
+Excessive false positives on clean data reduce trust in the tool and make
+it harder to act on legitimate flags. This criterion is as important as
+detection accuracy.
+
+### 3. Output Schema Compliance
+
+Every report must parse as valid JSON and include all required fields:
+`module`, `dataset`, `timestamp`, `status`, `summary`, `checks`,
+`overall_risk`, `recommendations`. The dashboard will reject any report
+that is missing these fields or uses different key names.
 
 ---
 
-## Important to understand:
+## Limitations
 
-**Metric incompatibility.**
-Fairness definitions mathematically conflict. It is impossible to simultaneously
-satisfy equal opportunity, demographic parity, and calibration when base rates
-differ (Chouldechova, 2017). Do not attempt to optimize for all metrics — choose
-the primary metric appropriate for the task and report others for context.
+### What this module doesn't catch
 
-**Dataset scope.**
-Adult Income reflects 1994 U.S. census data. German Credit reflects a specific
-European financial context. Patterns found on these datasets may not generalize.
-Always re-run fairness audits on new datasets before deployment.
+This module covers four common leakage patterns. There are others it won't detect:
 
-**No metric proves fairness.**
-Metrics surface disparities. They do not explain their cause, confirm
-discrimination occurred, or prescribe a remedy. Interpretation requires
-domain knowledge and stakeholder judgment.
+- **Aggregate leakage:** if you compute group-level statistics (like mean income by zip code) across the whole dataset before splitting, that information leaks into the test set — and this module won't catch it
+- **Pipeline leakage:** if you fit a scaler or encoder on training + test data combined, the test set influenced the preprocessing — also not caught here
+- **Proxy leakage:** a feature that isn't the target but is derived from it through a less obvious path — hard to detect automatically
+- **Evaluation design issues:** for example, cross-validation folds with overlapping time windows
 
-**Sensitive feature limitations.**
-Both datasets encode sensitive attributes as simplified binary or categorical
-variables. These encodings do not capture the full complexity of gender, race,
-or socioeconomic status. Acknowledge this explicitly in any report produced
-from this module.
+These are real problems worth knowing about, even if they're out of scope here.
+
+### The thresholds are judgment calls
+
+A correlation of 0.96 might be direct leakage or a genuinely strong predictor — the module can't tell. A correlation of 0.60 might be a subtle proxy leak below the detection threshold. The checks will sometimes flag things that are fine (false positives) and sometimes miss things that aren't (false negatives). Always review flagged features with knowledge of where they came from.
+
+### Your inputs have to be right
+
+The module is only as good as what you give it. A few things that will cause misleading results even if the code is correct:
+
+- If `target_col` points to a downstream label rather than the actual prediction target, Check 1 and Check 4 will be measuring the wrong thing
+- If you leave datetime columns out of `datetime_cols`, Check 3 won't see them
+- If `reference_date` doesn't reflect the true moment of prediction, Check 3 will produce incorrect results — this one is easy to get wrong, so confirm the date carefully
+
+---
+
+## Summary
+
+This module gives you a structured, documented first pass at leakage detection. It's designed to be practical for a graduate project — interpretable checks, clear outputs, and a validation path against synthetic data. It won't catch everything, and every flag it raises still needs a human to look at it and decide what to do. Use it as a starting point, not a final answer.
 
 ---
 
 ## References
 
-- Barocas, S., Hardt, M., & Narayanan, A. (2023). *Fairness and Machine Learning: Limitations and Opportunities.* MIT Press. https://fairmlbook.org/
-- Chouldechova, A. (2017). *Fair Prediction with Disparate Impact: A Study of Bias in Recidivism Prediction Instruments.* Big Data, 5(2).
-- Hardt, M., Price, E., & Srebro, N. (2016). *Equality of Opportunity in Supervised Learning.* NeurIPS.
-- fairlearn Documentation: https://fairlearn.org/
-- aif360 Documentation: https://aif360.readthedocs.io/
+- Kaufman, S., Rosset, S., Perlich, C., & Stitelman, O. (2012). *Leakage in Data Mining: Formulation, Detection, and Avoidance.* ACM Transactions on Knowledge Discovery from Data, 6(4).
+- Kapoor, S. & Narayanan, A. (2023). *Leakage and the Reproducibility Crisis in Machine Learning-based Science.* Patterns, 4(9).
+- Saito, T. & Rehmsmeier, M. (2015). *The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets.* PLOS ONE, 10(3).
 - UCI ML Repository — Adult Income Dataset: https://archive.ics.uci.edu/dataset/2/adult
-- UCI ML Repository — German Credit Dataset: https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data
+- scikit-learn — `roc_auc_score`, `train_test_split`: https://scikit-learn.org/stable/
+- Great Expectations — Data quality and validation framework: https://docs.greatexpectations.io/
