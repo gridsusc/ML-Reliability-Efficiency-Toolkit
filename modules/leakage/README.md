@@ -1,6 +1,6 @@
 # Leakage Detection Module
 
-This module is designed as a practical, first-line leakage audit for tabular machine learning workflows. It focuses on interpretable, implementable checks that surface suspicious patterns associated with leakage, while acknowledging that leakage detection is inherently context-dependent and requires human validation.
+This module helps you catch data leakage before it silently inflates your model's performance. It runs four checks on your dataset and flags features or patterns that look suspicious. It won't catch every possible form of leakage — and it may occasionally flag something that turns out to be fine — but it gives you a structured starting point and forces a documented decision on anything it finds.
 
 ---
 
@@ -41,9 +41,77 @@ modules/leakage/
 
 ---
 
+## Installation
+
+All dependencies for this module are in the root `requirements.txt`. Here's how to get set up:
+
+1. Create and activate a virtual environment from the project root.
+2. Run `pip install -r requirements.txt` to install everything.
+3. Double-check that `scikit-learn`, `pandas`, and `scipy` installed correctly by checking their versions.
+4. `great-expectations` is optional. It's useful if you want to add formal data contracts on top of the checks this module already does, but it has a lot of setup overhead. You don't need it to run the core pipeline — `pandas` and `scipy` handle everything.
+
+---
+
+## Implementation Instructions
+
+This section walks you through what to build and in what order. There's no code here — use the scikit-learn, pandas, and scipy documentation linked in the References section to figure out the specifics as you go.
+
+**Step 1 — Load and prepare the data**
+Download the Adult Income dataset from UCI. Clean it: handle missing values, encode categorical columns, and make sure the target column is separated from the features. Create an 80/20 stratified train/test split with a fixed random seed. Keep both splits as separate DataFrames — the pipeline takes them as distinct inputs. Don't shuffle or merge them after splitting.
+
+**Step 2 — Build the synthetic dataset first**
+Before you write any check logic, build the synthetic dataset in `data/synthetic/`. You need three versions: one where a column is basically a noisy copy of the target label, one where 5% of test rows are exact duplicates from the training set, and one where a date column contains values that go past the reference date. Build this dataset first because you'll use it to test each check as you build it — it's much easier to debug that way.
+
+**Step 3 — Build Check 1 in `target_correlation.py`**
+For every feature column, measure how strongly it's correlated with the target. Use Pearson correlation for numeric features and Spearman correlation for categorical ones (after encoding). Assign each feature a severity level based on the threshold bands in the Thresholds Reference section and return the raw correlation values alongside the severity for the report.
+
+**Step 4 — Build Check 2 in `train_test_contamination.py`**
+Hash every row in the train and test DataFrames (all feature columns, not the target). Count how many row hashes appear in both sets, compute the contamination ratio as `duplicate_rows / len(df_test)`, and assign a severity level. Return the count, ratio, and severity.
+
+**Step 5 — Build Check 3 in `future_information.py`**
+Take a list of datetime column names and a `reference_date`. For each column, check whether any values go past that date and flag the ones that do. Make both parameters optional — if the user doesn't provide them, the check should report itself as SKIPPED, not LOW or PASS.
+
+**Step 6 — Build Check 4 in `single_feature_audit.py`**
+For each feature, train a logistic regression using only that one feature on the training split, then check its ROC-AUC on the test split. Assign a severity level based on the AUC threshold bands. To keep this from taking too long, only run this check on features that already came back MEDIUM or HIGH from Check 1, plus a small random sample of the rest. Note this decision in your notebook.
+
+**Step 7 — Set up shared helpers in `leakage_utils.py`**
+Put the threshold constants in one place so every check reads from the same source. Add helper functions for row hashing, correlation, and any formatting you reuse across checks. The `LEAKAGE_THRESHOLDS` dictionary from this README should live here and be imported by each check module — don't hardcode values inside the individual files.
+
+**Step 8 — Build the pipeline in `leakage_pipeline.py`**
+Create a class that takes the train DataFrame, test DataFrame, target column name, and optional temporal parameters. Run all four checks in sequence, collect their outputs, compute `overall_risk` using the aggregation logic from the Risk Levels section, and assemble the full JSON report. Add a `save_report()` method that writes to `reports/leakage/<timestamp>_<dataset>.json`. The report must match the Standard Output Schema in this README exactly.
+
+**Step 9 — Write the demo notebook**
+In `notebooks/leakage_demo.ipynb`, show the full flow: load Adult Income → split the data → run `LeakagePipeline` → save the report → print a readable summary of what was flagged. This is your main Week 4 deliverable.
+
+**Step 10 — Validate with the synthetic dataset**
+In `notebooks/synthetic_leakage_audit.ipynb`, run the pipeline against all three synthetic scenarios. Each check must return HIGH for the leakage it was built to catch. If one doesn't fire, the problem is in the implementation logic — go back and fix it before touching the threshold values. Write up the validation results as a table in the notebook.
+
+---
+
 ## How to Use
 
+Before running this module, you need two things ready: the dataset loaded and split into separate train and test DataFrames, and the target column identified and confirmed as binary. Unlike the fairness module, you do not need a trained model or predictions — the leakage pipeline operates directly on the raw data and the split itself.
 
+If you want to run Check 3, you also need to identify which columns in your dataset are datetime columns and confirm your `reference_date` — the moment at which a prediction would actually be made in production. Do not guess this value; confirm it with whoever defined the data pipeline.
+
+```python
+from modules.leakage.src.leakage_pipeline import LeakagePipeline
+
+pipeline = LeakagePipeline(
+    df_train=train_df,
+    df_test=test_df,
+    target_col="income",
+    datetime_cols=["transaction_date"],     # optional — omit if no temporal columns
+    reference_date="2023-01-01",            # optional — required only for Check 3
+)
+
+report = pipeline.run_all_checks()
+pipeline.save_report(report, dataset="adult_income")
+print(report["overall_risk"])               # HIGH | MEDIUM | LOW
+```
+
+Each check can also be run independently — see the individual `src/` files.
+All thresholds can be overridden by passing a custom `thresholds` dict to `LeakagePipeline`.
 
 ---
 
@@ -376,7 +444,7 @@ This schema is required for dashboard integration — do not omit any field.
 
 ### Adult Income Dataset (UCI ML Repository)
 
-Primary benchmark for leakage checks on real-world tabular data.
+Primary benchmark for leakage checks on real-world tabular data. Predicts whether an individual earns more than $50,000/year. Attributes include age, education, occupation, marital status, race, and gender.
 
 - **Target:** `income` (binary: ≤50K / >50K)
 - **Sensitive features:** `sex`, `race`
@@ -386,7 +454,7 @@ Primary benchmark for leakage checks on real-world tabular data.
 
 ### Synthetic Leakage Dataset
 
-Purpose-built to validate that each check responds correctly to known leakage patterns.
+Generated to simulate controlled leakage scenarios for testing and validating the leakage detection module. Three scenarios are implemented:
 
 | Scenario | Injection | Check(s) expected to fire | Success criterion |
 |---|---|---|---|
@@ -477,56 +545,34 @@ that is missing these fields or uses different key names.
 
 ## Limitations
 
-### A. Scope Limitations
+### What this module doesn't catch
 
-This module targets four common, detectable forms of tabular leakage. It does
-not address:
+This module covers four common leakage patterns. There are others it won't detect:
 
-- **Aggregate leakage:** group-level statistics (e.g., mean income by zip code)
-  computed over the full dataset before splitting
-- **Pipeline leakage:** preprocessing steps fitted on train + test combined
-  (e.g., a scaler or encoder that saw test data during fitting)
-- **Proxy leakage:** features that are not the target but are derived from it
-  indirectly through a non-obvious path
-- **Evaluation design leakage:** e.g., cross-validation folds with overlapping
-  temporal windows
+- **Aggregate leakage:** if you compute group-level statistics (like mean income by zip code) across the whole dataset before splitting, that information leaks into the test set — and this module won't catch it
+- **Pipeline leakage:** if you fit a scaler or encoder on training + test data combined, the test set influenced the preprocessing — also not caught here
+- **Proxy leakage:** a feature that isn't the target but is derived from it through a less obvious path — hard to detect automatically
+- **Evaluation design issues:** for example, cross-validation folds with overlapping time windows
 
-These forms of leakage exist and matter. The module does not claim to detect them.
+These are real problems worth knowing about, even if they're out of scope here.
 
-### B. Statistical Limitations
+### The thresholds are judgment calls
 
-All thresholds are heuristic. A feature with r = 0.96 could be direct target
-encoding or a legitimate strong predictor. A feature with r = 0.60 could be
-a subtle proxy leak that this module would not flag.
+A correlation of 0.96 might be direct leakage or a genuinely strong predictor — the module can't tell. A correlation of 0.60 might be a subtle proxy leak below the detection threshold. The checks will sometimes flag things that are fine (false positives) and sometimes miss things that aren't (false negatives). Always review flagged features with knowledge of where they came from.
 
-The module may:
-- **Over-flag** legitimate strong predictors (false positives)
-- **Under-flag** subtle proxy features below threshold (false negatives)
+### Your inputs have to be right
 
-Results must always be interpreted alongside domain knowledge and feature lineage.
+The module is only as good as what you give it. A few things that will cause misleading results even if the code is correct:
 
-### C. Operational Limitations
-
-The module's accuracy depends on correct inputs. Specifically:
-
-- `target_col` must be the actual prediction target, not a downstream label
-- `datetime_cols` must include all temporally sensitive columns
-- `reference_date` must reflect the true moment of prediction, not the data
-  collection cutoff or the end of the training window
-- The train/test split provided must be the actual one used for model evaluation
-
-A misconfigured `reference_date` can cause Check 3 to produce systematically
-misleading results even when the code is entirely correct.
+- If `target_col` points to a downstream label rather than the actual prediction target, Check 1 and Check 4 will be measuring the wrong thing
+- If you leave datetime columns out of `datetime_cols`, Check 3 won't see them
+- If `reference_date` doesn't reflect the true moment of prediction, Check 3 will produce incorrect results — this one is easy to get wrong, so confirm the date carefully
 
 ---
 
 ## Summary
 
-This module prioritizes interpretable first-line checks over exhaustive leakage
-detection. It may miss subtle leakage introduced through preprocessing, aggregation,
-feature engineering lineage, or evaluation design. Conversely, it may flag legitimate
-strong predictors. Results should be interpreted as audit signals requiring human
-review — not as definitive judgments about the presence or absence of leakage.
+This module gives you a structured, documented first pass at leakage detection. It's designed to be practical for a graduate project — interpretable checks, clear outputs, and a validation path against synthetic data. It won't catch everything, and every flag it raises still needs a human to look at it and decide what to do. Use it as a starting point, not a final answer.
 
 ---
 
