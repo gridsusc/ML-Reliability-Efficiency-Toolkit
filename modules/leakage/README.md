@@ -43,24 +43,7 @@ modules/leakage/
 
 ## How to Use
 
-```python
-from modules.leakage.src.leakage_pipeline import LeakagePipeline
 
-pipeline = LeakagePipeline(
-    df_train=train_df,
-    df_test=test_df,
-    target_col="income",
-    datetime_cols=["transaction_date"],     # optional
-    reference_date="2023-01-01",            # optional, for Check 3
-)
-
-report = pipeline.run_all_checks()
-pipeline.save_report(report, dataset="adult_income")
-print(report["overall_risk"])               # HIGH | MEDIUM | LOW
-```
-
-Each check can also be run independently — see the individual `src/` files.
-All thresholds can be overridden by passing a custom `thresholds` dict to `LeakagePipeline`.
 
 ---
 
