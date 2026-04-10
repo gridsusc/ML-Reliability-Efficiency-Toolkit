@@ -87,8 +87,8 @@ This ensures that results are comparable across modules, interpretable, and acti
 | Layer | Libraries |
 |---|---|
 | **Base** | pandas, numpy, scikit-learn |
-| **Fairness Audit** | fairlearn, aif360 |
-| **Leakage Detection** | pandas, scikit-learn, great-expectations, scipy |
+| **Fairness Audit** | fairlearn, aif360(optional)|
+| **Leakage Detection** | pandas, scikit-learn, great-expectations(optional), scipy |
 | **LLM Context Optimizer** | Riddick Input |
 | **Dashboard** | streamlit, plotly, matplotlib |
 
