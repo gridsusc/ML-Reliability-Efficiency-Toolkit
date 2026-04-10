@@ -120,7 +120,7 @@ Evaluates model behavior across demographic groups.
 - Performs subgroup performance analysis
 - Flags disparities using defined thresholds
 
-> For metric definitions, thresholds, and evaluation criteria, see [`fairness_audit/README.md`](fairness_audit/README.md).
+> For metric definitions, thresholds, and evaluation criteria, see [`modules/fairness/README.md`](modules/fairness/README.md).
 
 ---
 
@@ -132,7 +132,7 @@ Identifies potential sources of leakage in datasets and ML pipelines.
 - Identifies train/test contamination
 - Highlights high-risk features
 
-> For detection methods, risk levels, and evaluation criteria, see [`leakage_detection/README.md`](leakage_detection/README.md).
+> For detection methods, risk levels, and evaluation criteria, see [`modules/leakage/README.md`](modules/leakage/README.md).
 
 ---
 
