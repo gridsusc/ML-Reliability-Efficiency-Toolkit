@@ -1,0 +1,34 @@
+{
+  "dataset": "Adult Income",
+  "checks_run": [
+    "target_correlation",
+    "train_test_contamination",
+    "future_information",
+    "single_feature_auc"
+  ],
+  "summary": {
+    "features_checked": 14,
+    "flags_raised": 2,
+    "risk_level": "Medium"
+  },
+  "flagged_features": [
+    {
+      "feature": "relationship",
+      "check": "target_correlation",
+      "correlation": 0.651,
+      "risk": "High",
+      "reason": "Strong point-biserial correlation with target (>0.60)."
+    },
+    {
+      "feature": "marital-status",
+      "check": "single_feature_auc",
+      "auc": 0.789,
+      "risk": "Medium",
+      "reason": "Single-feature AUC exceeds 0.75 threshold."
+    }
+  ],
+  "notes": [
+    "No train/test row duplication detected.",
+    "No temporal features flagged for future information leakage."
+  ]
+}

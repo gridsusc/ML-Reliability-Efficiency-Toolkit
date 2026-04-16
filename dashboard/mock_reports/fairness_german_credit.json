@@ -1,0 +1,30 @@
+{
+  "dataset": "German Credit",
+  "sensitive_attribute": "age_group",
+  "model": "RandomForestClassifier",
+  "metrics": {
+    "demographic_parity_ratio": 0.8712,
+    "equal_opportunity_difference": -0.0523,
+    "accuracy_difference": 0.0281,
+    "false_positive_rate_difference": 0.0194
+  },
+  "subgroups": [
+    {
+      "group": "age >= 25",
+      "accuracy": 0.7450,
+      "true_positive_rate": 0.8192,
+      "false_positive_rate": 0.3810,
+      "sample_size": 690
+    },
+    {
+      "group": "age < 25",
+      "accuracy": 0.7169,
+      "true_positive_rate": 0.7669,
+      "false_positive_rate": 0.3616,
+      "sample_size": 310
+    }
+  ],
+  "flags": [
+    "All metrics are within acceptable thresholds. No significant fairness disparities detected for age_group."
+  ]
+}
