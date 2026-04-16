@@ -23,12 +23,25 @@ MOCK_REPORTS_DIR = os.path.join(os.path.dirname(__file__), "mock_reports")
 
 def load_reports(directory: str) -> dict[str, dict]:
     """Load all JSON report files from *directory* and return them keyed by
-    filename (without extension)."""
+    filename (without extension).
+
+    Each JSON file is expected to contain a top-level object.  Fairness
+    reports should include ``metrics``, ``subgroups``, and ``flags`` keys.
+    Leakage reports should include ``summary``, ``flagged_features``, and
+    ``notes`` keys.  See ``mock_reports/`` for examples.
+    """
     reports: dict[str, dict] = {}
-    for path in sorted(glob.glob(os.path.join(directory, "*.json"))):
+    try:
+        paths = sorted(glob.glob(os.path.join(directory, "*.json")))
+    except OSError:
+        return reports
+    for path in paths:
         name = os.path.splitext(os.path.basename(path))[0]
-        with open(path, "r", encoding="utf-8") as fh:
-            reports[name] = json.load(fh)
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                reports[name] = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            continue
     return reports
 
 
@@ -88,7 +101,7 @@ if fairness_reports:
             # Summary metrics
             if "metrics" in report:
                 cols = st.columns(len(report["metrics"]))
-                for col, (metric, value) in zip(cols, report["metrics"].items()):
+                for col, (metric, value) in zip(cols, report["metrics"].items(), strict=True):
                     col.metric(label=metric, value=f"{value:.4f}")
 
             # Subgroup details
