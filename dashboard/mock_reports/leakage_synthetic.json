@@ -1,0 +1,40 @@
+{
+  "dataset": "Synthetic Leakage Dataset",
+  "checks_run": [
+    "target_correlation",
+    "train_test_contamination",
+    "future_information",
+    "single_feature_auc"
+  ],
+  "summary": {
+    "features_checked": 6,
+    "flags_raised": 4,
+    "risk_level": "Critical"
+  },
+  "flagged_features": [
+    {
+      "feature": "target_encoded",
+      "check": "target_correlation",
+      "correlation": 1.0,
+      "risk": "Critical",
+      "reason": "Feature is a direct encoding of the target variable."
+    },
+    {
+      "feature": "future_revenue",
+      "check": "future_information",
+      "risk": "High",
+      "reason": "Feature contains future information not available at prediction time."
+    },
+    {
+      "feature": "target_encoded",
+      "check": "single_feature_auc",
+      "auc": 1.0,
+      "risk": "Critical",
+      "reason": "Single-feature AUC of 1.00 indicates perfect leakage."
+    }
+  ],
+  "notes": [
+    "15% of training rows were found duplicated in the test set — train/test contamination detected.",
+    "This synthetic dataset was designed with intentional leakage for validation purposes."
+  ]
+}
