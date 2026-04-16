@@ -6,10 +6,12 @@ This project explores methods to improve **machine learning reliability, fairnes
 
 - Responsible AI auditing
 - Data leakage detection
-- LLM token/context optimization
 - Model evaluation visualization
 
 The goal is to create **practical tool that students can integrate into ML pipelines**.
+
+1. Is the model treating demographic groups fairly?
+2. Did the model learn anything it shouldn't have (data leakage)?
 
 ---
 
@@ -36,7 +38,6 @@ In many machine learning workflows, model development focuses heavily on **accur
 |---|---|
 | Responsible AI Auditing | Evaluate model performance across demographic subgroups and compute fairness metrics |
 | Data Leakage Detection | Identify potential leakage risks in datasets and ML pipelines |
-| LLM Context Optimization | *(Riddick Input)* |
 | Visualization Dashboard | Provide interactive visual summaries of all module outputs |
 
 ---
@@ -48,21 +49,19 @@ ml_reliability_efficiency_toolkit/
 │
 ├── modules/
 │   ├── fairness/               ← fairness audit module
-│   │   └── README.md           ← metrics, thresholds, evaluation criteria
+│   │   └── README.md           ← metrics, thresholds, usage
 │   │
-│   ├── leakage/                ← leakage detection module
-│   │   └── README.md           ← detection methods, risk levels, evaluation criteria
-│   │
-│   └── token/                  ← LLM context optimizer module
-│       └── README.md           ← benchmarks, success criteria, evaluation criteria
+│   └── leakage/                ← leakage detection module
+│       └── README.md           ← detection methods, risk levels, usage
 │
-├── dashboard/                  ← Streamlit app
-├── data/                       ← raw and processed datasets
-├── docs/                       ← concept explanations and architecture docs
-├── evaluation/                 ← shared evaluation utilities
-├── notebooks/                  ← demo notebooks per module
-├── reports/                    ← experiment outputs and result summaries
+├── dashboard/
+│   ├── app.py                  ← Streamlit entry point
+│   └── mock_reports/           ← fake JSON reports for dashboard dev
+│
+├── data/                       ← shared raw datasets
+├── docs/                       ← concept explanations, architecture notes
 ├── requirements.txt
+├── pytest.ini
 ├── .gitignore
 └── README.md                   ← this file
 ```
@@ -89,7 +88,6 @@ This ensures that results are comparable across modules, interpretable, and acti
 | **Base** | pandas, numpy, scikit-learn |
 | **Fairness Audit** | fairlearn, aif360(optional)|
 | **Leakage Detection** | pandas, scikit-learn, great-expectations(optional), scipy |
-| **LLM Context Optimizer** | Riddick Input |
 | **Dashboard** | streamlit, plotly, matplotlib |
 
 ---
@@ -104,9 +102,6 @@ This ensures that results are comparable across modules, interpretable, and acti
 
 **Synthetic Leakage Dataset**: Generated to simulate controlled leakage scenarios including a feature directly encoding the target, future information in training data, and train/test duplication. Used for testing and validating the leakage detection module.
 
-## Text — LLM Context and Token Optimization
-
-*(Riddick Input)*
 
 ---
 
@@ -136,9 +131,6 @@ Identifies potential sources of leakage in datasets and ML pipelines.
 
 ---
 
-## 3. LLM Context Optimization
-
-Riddick Input
 
 ---
 
@@ -149,27 +141,6 @@ Interactive Streamlit application that displays:
 - Fairness metrics and subgroup comparisons
 - Leakage risk reports
 - LLM experiment results
-
----
-
-# Project Timeline (8 Weeks)
-
-| Week | Focus | Key Deliverables |
-|---|---|---|
-| 1 | Setup & Architecture | Kickoff meeting, GitHub repo, folder structure, module ownership assigned, environment setup confirmed |
-| 2 | Research & Exploration | Library review, module approach designs, key concepts documented in `/docs` |
-| 3 | Prototype — Part 1 (all modules) | Each module: data loading working, core logic scaffolded, basic output produced — fairness metrics, leakage checks, token importance |
-| 4 | Prototype — Part 2 (all modules) | Each module: full pipeline working, evaluation criteria implemented, demo notebook complete and runnable |
-| 5 | Module Improvement | Refined fairness metrics, improved leakage logic, token experiment tuning |
-| 6 | System Integration & Experiments | Modules connected to dashboard, shared utilities, full experiment runs and results documented |
-| 7 | Documentation & Polish | Final docs, clean repo structure, dashboard polish |
-| 8 | Final Presentation | Slides, demo, architecture summary, findings |
-
----
-
-# Team
-
-Project developed as part of the **GRIDS**.
 
 ---
 
