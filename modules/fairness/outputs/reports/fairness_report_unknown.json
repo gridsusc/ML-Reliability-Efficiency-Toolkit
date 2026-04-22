@@ -1,0 +1,119 @@
+{
+    "dataset": "unknown",
+    "timestamp": "2026-04-09T16:36:17.727720Z",
+    "status": "FLAG",
+    "flags": [
+        "Equal opportunity difference exceeds pass threshold.",
+        "Disparate impact is below acceptable range.",
+        "Equalized odds difference is elevated."
+    ],
+    "summary": "Fairness risk is high. Equal opportunity difference is 0.217. Best TPR group: Asian-Pac-Islander. Worst TPR group: Black. Disparate impact is 0.308.",
+    "recommendations": [
+        "Review thresholding or apply post-processing to reduce TPR gaps.",
+        "Check whether one group is receiving systematically fewer positive predictions.",
+        "Investigate both TPR and FPR differences across groups.",
+        "Compare decision patterns for group Black against Asian-Pac-Islander."
+    ],
+    "thresholds": {
+        "pass_eod": 0.1,
+        "warn_eod": 0.15,
+        "pass_di": 0.8
+    },
+    "metrics": {
+        "equal_opportunity_difference": {
+            "value": 0.21696696696696693,
+            "ci_95": [
+                0.13798503973819545,
+                0.5871992864424057
+            ]
+        },
+        "demographic_parity_difference": {
+            "value": 0.20656417087565443,
+            "ci_95": [
+                0.15448414576883837,
+                0.27551998864099986
+            ]
+        },
+        "equalized_odds_difference": {
+            "value": 0.21696696696696693,
+            "ci_95": [
+                0.14344982078853052,
+                0.5871992864424057
+            ]
+        },
+        "demographic_parity_ratio": {
+            "value": 0.3078758949880669
+        },
+        "disparate_impact": {
+            "value": 0.3078758949880669
+        }
+    },
+    "group_metrics": {
+        "White": {
+            "count": 7779,
+            "accuracy": 0.8305694819385525,
+            "tpr": 0.5596465390279823,
+            "fpr": 0.0733194009056078,
+            "fnr": 0.44035346097201766,
+            "selection_rate": 0.20066846638385397,
+            "tp": 1140,
+            "tn": 5321,
+            "fp": 421,
+            "fn": 897
+        },
+        "Asian-Pac-Islander": {
+            "count": 258,
+            "accuracy": 0.810077519379845,
+            "tpr": 0.6944444444444444,
+            "fpr": 0.14516129032258066,
+            "fnr": 0.3055555555555556,
+            "selection_rate": 0.29844961240310075,
+            "tp": 50,
+            "tn": 159,
+            "fp": 27,
+            "fn": 22
+        },
+        "Black": {
+            "count": 838,
+            "accuracy": 0.9021479713603818,
+            "tpr": 0.4774774774774775,
+            "fpr": 0.033012379642365884,
+            "fnr": 0.5225225225225225,
+            "selection_rate": 0.09188544152744631,
+            "tp": 53,
+            "tn": 703,
+            "fp": 24,
+            "fn": 58
+        },
+        "Other": {
+            "count": 80,
+            "accuracy": 0.8875,
+            "tpr": 0.5555555555555556,
+            "fpr": 0.07042253521126761,
+            "fnr": 0.4444444444444444,
+            "selection_rate": 0.125,
+            "tp": 5,
+            "tn": 66,
+            "fp": 5,
+            "fn": 4
+        },
+        "Amer-Indian-Eskimo": {
+            "count": 90,
+            "accuracy": 0.8777777777777778,
+            "tpr": 0.6153846153846154,
+            "fpr": 0.07792207792207792,
+            "fnr": 0.38461538461538464,
+            "selection_rate": 0.15555555555555556,
+            "tp": 8,
+            "tn": 71,
+            "fp": 6,
+            "fn": 5
+        }
+    },
+    "validation": {
+        "fairlearn_equal_opportunity_difference": 0.21696696696696693,
+        "fairlearn_demographic_parity_difference": 0.20656417087565443,
+        "fairlearn_equalized_odds_difference": 0.21696696696696693,
+        "fairlearn_demographic_parity_ratio": 0.3078758949880669
+    }
+}

@@ -1,0 +1,79 @@
+{
+    "dataset": "adult_income_sex",
+    "timestamp": "2026-04-22T05:47:52.441242Z",
+    "status": "FLAG",
+    "flags": [
+        "Disparate impact is below acceptable range."
+    ],
+    "summary": "Fairness looks acceptable. Equal opportunity difference is 0.044. Best TPR group: Female. Worst TPR group: Male. Disparate impact is 0.614.",
+    "recommendations": [
+        "Check whether one group is receiving systematically fewer positive predictions.",
+        "Compare decision patterns for group Male against Female."
+    ],
+    "thresholds": {
+        "pass_eod": 0.1,
+        "warn_eod": 0.15,
+        "pass_di": 0.8
+    },
+    "metrics": {
+        "equal_opportunity_difference": {
+            "value": 0.04428825484512744,
+            "ci_95": [
+                0.004509807196684508,
+                0.09209516334198185
+            ]
+        },
+        "demographic_parity_difference": {
+            "value": 0.040060550649810886,
+            "ci_95": [
+                0.028321163287517694,
+                0.051096673507260514
+            ]
+        },
+        "equalized_odds_difference": {
+            "value": 0.04428825484512744,
+            "ci_95": [
+                0.00687757029898368,
+                0.09209516334198185
+            ]
+        },
+        "demographic_parity_ratio": {
+            "value": 0.6140707644160514
+        },
+        "disparate_impact": {
+            "value": 0.6140707644160514
+        }
+    },
+    "group_metrics": {
+        "Male": {
+            "count": 6127,
+            "accuracy": 0.7465317447364126,
+            "tpr": 0.25598722724853645,
+            "fpr": 0.03648775894538606,
+            "fnr": 0.7440127727514635,
+            "selection_rate": 0.10380283988901583,
+            "tp": 481,
+            "tn": 4093,
+            "fp": 155,
+            "fn": 1398
+        },
+        "Female": {
+            "count": 2918,
+            "accuracy": 0.8865661411925977,
+            "tpr": 0.3002754820936639,
+            "fpr": 0.030136986301369864,
+            "fnr": 0.699724517906336,
+            "selection_rate": 0.06374228923920494,
+            "tp": 109,
+            "tn": 2478,
+            "fp": 77,
+            "fn": 254
+        }
+    },
+    "validation": {
+        "fairlearn_equal_opportunity_difference": 0.04428825484512744,
+        "fairlearn_demographic_parity_difference": 0.040060550649810886,
+        "fairlearn_equalized_odds_difference": 0.04428825484512744,
+        "fairlearn_demographic_parity_ratio": 0.6140707644160514
+    }
+}
