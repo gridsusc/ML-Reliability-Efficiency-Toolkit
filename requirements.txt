@@ -1,1 +1,29 @@
-Requirements
+# ML Reliability & Efficiency Toolkit — dependencies
+# Python 3.10 or newer required
+#
+# Install:
+#   pip install -r requirements.txt
+#
+# Verify:
+#   python -c "import pandas, sklearn, fairlearn, streamlit, plotly, pytest; print('OK')"
+
+# ----- Base data stack -----
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+scipy>=1.11
+ucimlrepo>=0.0.6
+
+# ----- Fairness module -----
+fairlearn>=0.10
+
+# ----- Dashboard -----
+streamlit>=1.30
+plotly>=5.18
+
+# ----- Testing -----
+pytest>=7.4
+
+# ----- Notebooks -----
+jupyter>=1.0
+ipykernel>=6.29

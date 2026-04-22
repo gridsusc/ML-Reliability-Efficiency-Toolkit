@@ -1,0 +1,31 @@
+{
+  "dataset": "Adult Income",
+  "sensitive_attribute": "sex",
+  "model": "LogisticRegression",
+  "metrics": {
+    "demographic_parity_ratio": 0.3214,
+    "equal_opportunity_difference": -0.1287,
+    "accuracy_difference": 0.0453,
+    "false_positive_rate_difference": 0.0312
+  },
+  "subgroups": [
+    {
+      "group": "Male",
+      "accuracy": 0.8521,
+      "true_positive_rate": 0.6734,
+      "false_positive_rate": 0.0812,
+      "sample_size": 22000
+    },
+    {
+      "group": "Female",
+      "accuracy": 0.8068,
+      "true_positive_rate": 0.5447,
+      "false_positive_rate": 0.0500,
+      "sample_size": 10771
+    }
+  ],
+  "flags": [
+    "Demographic parity ratio (0.3214) is below the 0.80 threshold — significant disparity detected.",
+    "Equal opportunity difference (-0.1287) exceeds the ±0.10 threshold — the model under-predicts positive outcomes for the Female subgroup."
+  ]
+}
