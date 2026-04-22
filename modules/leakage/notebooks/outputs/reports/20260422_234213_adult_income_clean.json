@@ -1,0 +1,24 @@
+{
+  "module": "leakage",
+  "dataset": "adult_income_clean",
+  "timestamp": "2026-04-22T23:42:13Z",
+  "status": "PASS",
+  "summary": "No significant leakage detected.",
+  "checks": {
+    "target_correlation": {
+      "flagged_features": [],
+      "max_correlation": 0.4461800220155758,
+      "risk": "LOW"
+    },
+    "train_test_contamination": {
+      "duplicate_rows": 0,
+      "contamination_ratio": 0.0,
+      "risk": "LOW"
+    },
+    "future_information": {
+      "flagged_columns": [],
+      "risk": "SKIPPED"
+    }
+  },
+  "overall_risk": "LOW"
+}

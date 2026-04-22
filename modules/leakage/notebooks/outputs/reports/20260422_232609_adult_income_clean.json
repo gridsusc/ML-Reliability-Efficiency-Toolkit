@@ -1,0 +1,24 @@
+{
+  "module": "leakage",
+  "dataset": "adult_income_clean",
+  "timestamp": "2026-04-22T23:26:09Z",
+  "status": "FAIL",
+  "summary": "MEDIUM risk detected. Review flagged features and logic.",
+  "checks": {
+    "target_correlation": {
+      "flagged_features": [],
+      "max_correlation": 0.4461800220155758,
+      "risk": "LOW"
+    },
+    "train_test_contamination": {
+      "duplicate_rows": 1,
+      "contamination_ratio": 0.00011077877478675086,
+      "risk": "MEDIUM"
+    },
+    "future_information": {
+      "flagged_columns": [],
+      "risk": "SKIPPED"
+    }
+  },
+  "overall_risk": "MEDIUM"
+}

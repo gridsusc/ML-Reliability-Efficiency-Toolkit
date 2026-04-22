@@ -1,0 +1,24 @@
+{
+  "module": "leakage",
+  "dataset": "synthetic_v2_contamination",
+  "timestamp": "2026-04-22T23:42:13Z",
+  "status": "FAIL",
+  "summary": "HIGH risk detected. Review flagged features and logic.",
+  "checks": {
+    "target_correlation": {
+      "flagged_features": [],
+      "max_correlation": 0.03607178018466882,
+      "risk": "LOW"
+    },
+    "train_test_contamination": {
+      "duplicate_rows": 10,
+      "contamination_ratio": 0.05,
+      "risk": "HIGH"
+    },
+    "future_information": {
+      "flagged_columns": [],
+      "risk": "SKIPPED"
+    }
+  },
+  "overall_risk": "HIGH"
+}
