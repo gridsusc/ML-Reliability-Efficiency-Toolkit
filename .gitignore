@@ -27,3 +27,6 @@ dist/
 build/
 *.egg-info/
 ml-toolkit/
+
+# Data loader 
+np.py 
