@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML Reliability & Efficiency Toolkit — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f0f2f6;
+    --text-primary: #262730;
+    --text-secondary: #808495;
+    --border: #e6e8ef;
+    --border-strong: #d4d7dd;
+    --st-red: #ff4b4b;
+    --success: #09ab3b;
+    --success-bg: #e6f7ea;
+    --warning: #ff9f36;
+    --warning-bg: #fff4e6;
+    --error: #ff4b4b;
+    --error-bg: #ffecec;
+    --info: #0068c9;
+    --info-bg: #e7f1fb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .app { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 24px 20px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-brand { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+  .sidebar-brand-sub {
+    font-size: 12px; color: var(--text-secondary);
+    margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-section-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 10px;
+  }
+  .st-checkbox {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 0; font-size: 14px; cursor: pointer;
+    user-select: none;
+  }
+  .st-checkbox input { width: 16px; height: 16px; accent-color: var(--st-red); cursor: pointer; }
+  .st-select {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: #fff; font-size: 14px; font-family: inherit;
+    color: var(--text-primary); cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23808495' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px;
+  }
+  .st-text-input {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: #fff; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  }
+  .st-help { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+  .loaded-reports-list {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.9;
+    padding: 8px 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px;
+  }
+  .loaded-reports-list .report-item { padding: 2px 0; }
+  .loaded-reports-list .report-item.hidden { color: var(--text-secondary); text-decoration: line-through; opacity: 0.5; }
+  .sidebar-footer {
+    margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text-secondary); line-height: 1.6;
+  }
+  .sidebar-footer code {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    background: #fff; padding: 1px 5px; border: 1px solid var(--border); border-radius: 3px;
+  }
+
+  /* ---------- Main ---------- */
+  .main { padding: 40px 56px; max-width: 1280px; }
+  .page-title { font-size: 32px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .page-subtitle { font-size: 16px; color: var(--text-secondary); margin-bottom: 32px; }
+  .page-subtitle strong { color: var(--text-primary); font-weight: 600; }
+
+  .st-alert {
+    display: flex; gap: 12px; padding: 12px 16px;
+    border-radius: 6px; margin-bottom: 16px; font-size: 14px;
+    align-items: flex-start;
+  }
+  .st-alert-icon {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; color: #fff; margin-top: 1px;
+  }
+  .st-alert.error { background: var(--error-bg); color: #8b0000; }
+  .st-alert.error .st-alert-icon { background: var(--error); }
+  .st-alert.warning { background: var(--warning-bg); color: #7a4a00; }
+  .st-alert.warning .st-alert-icon { background: var(--warning); }
+  .st-alert.success { background: var(--success-bg); color: #045b1f; }
+  .st-alert.success .st-alert-icon { background: var(--success); }
+  .st-alert.info { background: var(--info-bg); color: #003f7d; }
+  .st-alert.info .st-alert-icon { background: var(--info); }
+
+  .st-h2 { font-size: 24px; font-weight: 700; margin-top: 32px; margin-bottom: 16px; letter-spacing: -0.01em; }
+  .st-h3 { font-size: 18px; font-weight: 600; margin-top: 20px; margin-bottom: 12px; }
+  .st-h4 { font-size: 14px; font-weight: 600; margin-top: 16px; margin-bottom: 8px; }
+
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .st-metric { padding: 16px 20px; background: var(--bg-secondary); border-radius: 6px; }
+  .st-metric-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; margin-bottom: 4px; }
+  .st-metric-value { font-size: 30px; font-weight: 600; line-height: 1.2; }
+  .st-metric-delta { font-size: 13px; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+  .st-metric-delta.down { color: var(--error); }
+  .st-metric-delta.up { color: var(--success); }
+  .st-metric-delta.neutral { color: var(--text-secondary); }
+
+  /* ---------- Tabs ---------- */
+  .st-tabs { border-bottom: 1px solid var(--border); display: flex; gap: 0; margin-bottom: 24px; }
+  .st-tab {
+    padding: 10px 20px; font-size: 14px; font-weight: 500;
+    color: var(--text-secondary); border-bottom: 2px solid transparent;
+    cursor: pointer; user-select: none; transition: color 0.15s;
+  }
+  .st-tab:hover { color: var(--text-primary); }
+  .st-tab.active { color: var(--st-red); border-bottom-color: var(--st-red); font-weight: 600; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .st-columns-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .chart-container {
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    padding: 16px 20px 20px; margin-bottom: 16px;
+  }
+  .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .chart-subtitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; }
+  .chart-svg { width: 100%; display: block; }
+
+  /* ---------- Expander ---------- */
+  .st-expander {
+    border: 1px solid var(--border); border-radius: 6px;
+    background: #fff; margin-bottom: 12px; overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .st-expander:hover { border-color: var(--border-strong); }
+  .st-expander-header {
+    padding: 14px 18px; font-size: 14px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+  }
+  .st-expander-header-left { display: flex; align-items: center; gap: 10px; }
+  .st-expander-header-right {
+    font-size: 12px; color: var(--text-secondary); font-weight: 400;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .st-expander-caret { color: var(--text-secondary); font-size: 10px; transition: transform 0.2s; }
+  .st-expander.open .st-expander-caret { transform: rotate(90deg); }
+  .st-expander-body {
+    padding: 20px 18px; border-top: 1px solid var(--border);
+    display: none;
+  }
+  .st-expander.open .st-expander-body { display: block; }
+  .st-expander.hidden-by-filter { display: none; }
+
+  /* ---------- Dataframe ---------- */
+  .st-dataframe {
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden; margin-bottom: 16px; font-size: 13px;
+  }
+  .st-dataframe table { width: 100%; border-collapse: collapse; }
+  .st-dataframe thead { background: var(--bg-secondary); }
+  .st-dataframe th {
+    padding: 10px 14px; font-size: 12px; font-weight: 600;
+    color: var(--text-secondary); text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .st-dataframe td {
+    padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle;
+  }
+  .st-dataframe tbody tr:last-child td { border-bottom: none; }
+  .st-dataframe tbody tr:hover { background: #fafbfc; }
+  .st-dataframe td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .st-dataframe td.num { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; text-align: right; }
+  .st-dataframe th.num { text-align: right; }
+
+  .risk-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .risk-pill.critical, .risk-pill.high { background: var(--error-bg); color: #8b0000; }
+  .risk-pill.medium { background: var(--warning-bg); color: #7a4a00; }
+  .risk-pill.low, .risk-pill.pass { background: var(--success-bg); color: #045b1f; }
+
+  .st-progress { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; margin: 4px 0; }
+  .st-progress-fill { height: 100%; background: var(--st-red); border-radius: 3px; transition: width 0.3s; }
+  .st-progress-fill.success { background: var(--success); }
+  .st-progress-fill.warning { background: var(--warning); }
+
+  .caption { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  .axis-text { font-family: 'Source Sans 3', sans-serif; font-size: 11px; fill: var(--text-secondary); }
+  .axis-text.bold { fill: var(--text-primary); font-weight: 500; }
+  .grid-line { stroke: var(--border); stroke-width: 1; }
+  .threshold-line { stroke: var(--error); stroke-width: 1.5; stroke-dasharray: 4 3; }
+
+  /* empty state */
+  .empty-state {
+    padding: 48px 20px; text-align: center; color: var(--text-secondary);
+    background: var(--bg-secondary); border-radius: 6px; font-size: 14px;
+  }
+  .empty-state strong { color: var(--text-primary); }
+
+  /* download button */
+  .download-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; font-size: 12px; font-weight: 500;
+    background: #fff; border: 1px solid var(--border-strong); border-radius: 6px;
+    color: var(--text-primary); cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+  }
+  .download-btn:hover { background: var(--bg-secondary); }
+
+  .integration-note code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: rgba(0,0,0,0.04); padding: 1px 5px; border-radius: 3px;
+  }
+
+  /* demo banner */
+  .demo-banner {
+    background: #fffbe6; border: 1px solid #ffe58f; border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 20px; font-size: 13px;
+    color: #7a4a00; display: flex; gap: 10px; align-items: center;
+  }
+  .demo-banner strong { color: #5a3700; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; }
+    .main { padding: 24px; }
+    .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    .st-columns-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- =============== SIDEBAR =============== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">🔍 ML Reliability Toolkit</div>
+    <div class="sidebar-brand-sub">Fairness · Leakage · Dashboard</div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Report Source</div>
+      <label class="st-checkbox">
+        <input type="checkbox" checked disabled>
+        <span>Use mock reports (for development)</span>
+      </label>
+      <input type="text" class="st-text-input" value="dashboard/mock_reports/" disabled style="margin-top: 8px; opacity: 0.6;">
+      <div class="st-help">Directory containing JSON reports matching the schema.</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Filter</div>
+      <label class="st-checkbox">
+        <input type="checkbox" id="filter-fairness" checked>
+        <span>Show fairness reports</span>
+      </label>
+      <label class="st-checkbox">
+        <input type="checkbox" id="filter-leakage" checked>
+        <span>Show leakage reports</span>
+      </label>
+      <label class="st-checkbox">
+        <input type="checkbox" id="filter-failed-only">
+        <span>Failed / at-risk only</span>
+      </label>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Dataset</div>
+      <select class="st-select" id="filter-dataset">
+        <option value="all">All datasets</option>
+        <option value="Adult Income">Adult Income</option>
+        <option value="German Credit">German Credit</option>
+        <option value="Synthetic Leakage Dataset">Synthetic Leakage Dataset</option>
+      </select>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Loaded Reports</div>
+      <div class="loaded-reports-list" id="reports-list">
+        <div class="report-item" data-report="fairness_adult">fairness_adult_income.json</div>
+        <div class="report-item" data-report="fairness_german">fairness_german_credit.json</div>
+        <div class="report-item" data-report="leakage_adult">leakage_adult_income.json</div>
+        <div class="report-item" data-report="leakage_synthetic">leakage_synthetic.json</div>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <strong style="color: var(--text-primary);">Schema:</strong> v1.0<br>
+      <strong style="color: var(--text-primary);">Last refresh:</strong><br>
+      2026-04-16 14:32 UTC<br><br>
+      Run with:<br>
+      <code>streamlit run dashboard/app.py</code>
+    </div>
+  </aside>
+
+  <!-- =============== MAIN =============== -->
+  <main class="main">
+
+    <div class="demo-banner">
+      <span>⚡</span>
+      <span><strong>Interactive mock.</strong> Try the sidebar filters, click tabs, expand report cards, and download reports. Data is from <code style="background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">dashboard/mock_reports/</code>.</span>
+    </div>
+
+    <h1 class="page-title">ML Reliability &amp; Efficiency Toolkit</h1>
+    <p class="page-subtitle">Interactive dashboard for <strong>fairness audit</strong> and <strong>leakage detection</strong> reports.</p>
+
+    <div class="st-alert error" id="verdict-alert">
+      <div class="st-alert-icon">!</div>
+      <div id="verdict-text">
+        <strong>Composite verdict: Review required.</strong>
+        2 of 4 reports failed — 1 fairness disparity (Adult Income, sex) and 1 critical leakage case (Synthetic).
+        See section-level findings below.
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="st-metric">
+        <div class="st-metric-label">Reports loaded</div>
+        <div class="st-metric-value" id="metric-loaded">4</div>
+        <div class="st-metric-delta neutral" id="metric-loaded-sub">2 fairness · 2 leakage</div>
+      </div>
+      <div class="st-metric">
+        <div class="st-metric-label">Reports flagged</div>
+        <div class="st-metric-value" id="metric-flagged" style="color: var(--error);">2</div>
+        <div class="st-metric-delta down" id="metric-flagged-sub">▲ 2 requiring action</div>
+      </div>
+      <div class="st-metric">
+        <div class="st-metric-label">Total flags raised</div>
+        <div class="st-metric-value" id="metric-flags">6</div>
+        <div class="st-metric-delta down" id="metric-flags-sub">3 critical · 3 warning</div>
+      </div>
+      <div class="st-metric">
+        <div class="st-metric-label">Datasets audited</div>
+        <div class="st-metric-value" id="metric-datasets">3</div>
+        <div class="st-metric-delta neutral" id="metric-datasets-sub">Adult · German · Synthetic</div>
+      </div>
+    </div>
+
+    <div class="st-tabs" id="tabs">
+      <div class="st-tab active" data-tab="overview">🔍 Overview</div>
+      <div class="st-tab" data-tab="fairness">⚖️ Fairness Audit</div>
+      <div class="st-tab" data-tab="leakage">🧪 Leakage Detection</div>
+      <div class="st-tab" data-tab="schema">📄 Schema</div>
+    </div>
+
+    <!-- ========= OVERVIEW TAB ========= -->
+    <div class="tab-panel active" data-panel="overview">
+
+      <section data-section="fairness">
+        <h2 class="st-h2">Fairness Audit</h2>
+        <p class="caption" style="margin-bottom: 16px;">Subgroup fairness metrics via fairlearn. Click a report to expand.</p>
+
+        <div class="st-expander open" data-report="fairness_adult" data-module="fairness" data-status="fail" data-dataset="Adult Income">
+          <div class="st-expander-header">
+            <div class="st-expander-header-left">
+              <span class="st-expander-caret">▸</span>
+              <span>📄 fairness_adult_income.json</span>
+              <span class="risk-pill high">FAIL</span>
+            </div>
+            <div class="st-expander-header-right">
+              <span>Adult Income · sex · LogisticRegression</span>
+              <button class="download-btn" onclick="event.stopPropagation(); downloadReport('fairness_adult')">⬇ JSON</button>
+            </div>
+          </div>
+          <div class="st-expander-body">
+            <div class="metrics-row" style="margin-bottom: 20px;">
+              <div class="st-metric"><div class="st-metric-label">Demographic parity ratio</div><div class="st-metric-value" style="color: var(--error);">0.3214</div><div class="st-metric-delta down">▼ below 0.80 threshold</div></div>
+              <div class="st-metric"><div class="st-metric-label">Equal opportunity diff.</div><div class="st-metric-value" style="color: var(--error);">−0.1287</div><div class="st-metric-delta down">▼ exceeds ±0.10</div></div>
+              <div class="st-metric"><div class="st-metric-label">Accuracy difference</div><div class="st-metric-value">0.0453</div><div class="st-metric-delta up">within threshold</div></div>
+              <div class="st-metric"><div class="st-metric-label">FPR difference</div><div class="st-metric-value">0.0312</div><div class="st-metric-delta up">within threshold</div></div>
+            </div>
+
+            <div class="st-columns-2">
+              <div class="chart-container">
+                <div class="chart-title">Subgroup performance — sex</div>
+                <div class="chart-subtitle">Accuracy, TPR, and FPR per group (n = 32,771)</div>
+                <svg viewBox="0 0 460 260" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+                  <line class="grid-line" x1="70" y1="40" x2="440" y2="40"/>
+                  <line class="grid-line" x1="70" y1="90" x2="440" y2="90"/>
+                  <line class="grid-line" x1="70" y1="140" x2="440" y2="140"/>
+                  <line class="grid-line" x1="70" y1="190" x2="440" y2="190"/>
+                  <line class="grid-line" x1="70" y1="225" x2="440" y2="225" stroke="#262730" stroke-width="1.5"/>
+                  <text class="axis-text" x="60" y="44" text-anchor="end">1.0</text>
+                  <text class="axis-text" x="60" y="94" text-anchor="end">0.75</text>
+                  <text class="axis-text" x="60" y="144" text-anchor="end">0.5</text>
+                  <text class="axis-text" x="60" y="194" text-anchor="end">0.25</text>
+                  <text class="axis-text" x="60" y="228" text-anchor="end">0</text>
+                  <rect x="95" y="52" width="28" height="173" fill="#636efa"/>
+                  <rect x="125" y="65" width="28" height="160" fill="#ef553b"/>
+                  <text class="axis-text bold" x="138" y="245" text-anchor="middle">Accuracy</text>
+                  <text class="axis-text" x="109" y="48" text-anchor="middle" font-size="10" font-weight="600" fill="#636efa">0.85</text>
+                  <text class="axis-text" x="139" y="61" text-anchor="middle" font-size="10" font-weight="600" fill="#ef553b">0.81</text>
+                  <rect x="220" y="91" width="28" height="134" fill="#636efa"/>
+                  <rect x="250" y="117" width="28" height="108" fill="#ef553b"/>
+                  <text class="axis-text bold" x="263" y="245" text-anchor="middle">TPR</text>
+                  <text class="axis-text" x="234" y="87" text-anchor="middle" font-size="10" font-weight="600" fill="#636efa">0.67</text>
+                  <text class="axis-text" x="264" y="113" text-anchor="middle" font-size="10" font-weight="600" fill="#ef553b">0.54</text>
+                  <rect x="345" y="193" width="28" height="32" fill="#636efa"/>
+                  <rect x="375" y="205" width="28" height="20" fill="#ef553b"/>
+                  <text class="axis-text bold" x="388" y="245" text-anchor="middle">FPR</text>
+                  <text class="axis-text" x="359" y="189" text-anchor="middle" font-size="10" font-weight="600" fill="#636efa">0.08</text>
+                  <text class="axis-text" x="389" y="201" text-anchor="middle" font-size="10" font-weight="600" fill="#ef553b">0.05</text>
+                  <rect x="280" y="8" width="12" height="12" fill="#636efa"/>
+                  <text class="axis-text" x="298" y="18">Male</text>
+                  <rect x="340" y="8" width="12" height="12" fill="#ef553b"/>
+                  <text class="axis-text" x="358" y="18">Female</text>
+                </svg>
+              </div>
+
+              <div class="chart-container">
+                <div class="chart-title">Fairness metrics vs. thresholds</div>
+                <div class="chart-subtitle">Bars crossing the dashed line indicate a flag</div>
+                <svg viewBox="0 0 460 260" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="180" y1="30" x2="180" y2="225" stroke="#262730" stroke-width="1.5"/>
+                  <line class="grid-line" x1="100" y1="30" x2="100" y2="225"/>
+                  <line class="grid-line" x1="260" y1="30" x2="260" y2="225"/>
+                  <line class="grid-line" x1="340" y1="30" x2="340" y2="225"/>
+                  <line class="grid-line" x1="420" y1="30" x2="420" y2="225"/>
+                  <line class="threshold-line" x1="260" y1="30" x2="260" y2="225"/>
+                  <line class="threshold-line" x1="100" y1="30" x2="100" y2="225"/>
+                  <text class="axis-text bold" x="170" y="60" text-anchor="end">DP ratio</text>
+                  <rect x="40" y="48" width="140" height="20" fill="#ef553b"/>
+                  <text class="axis-text" x="48" y="62" fill="#fff" font-weight="600">0.32</text>
+                  <text class="axis-text bold" x="170" y="105" text-anchor="end">Eq. opp. diff</text>
+                  <rect x="77" y="93" width="103" height="20" fill="#ef553b"/>
+                  <text class="axis-text" x="85" y="107" fill="#fff" font-weight="600">−0.13</text>
+                  <text class="axis-text bold" x="170" y="150" text-anchor="end">Accuracy diff</text>
+                  <rect x="180" y="138" width="36" height="20" fill="#00cc96"/>
+                  <text class="axis-text" x="222" y="152" font-weight="600">0.05</text>
+                  <text class="axis-text bold" x="170" y="195" text-anchor="end">FPR diff</text>
+                  <rect x="180" y="183" width="25" height="20" fill="#00cc96"/>
+                  <text class="axis-text" x="212" y="197" font-weight="600">0.03</text>
+                  <text class="axis-text" x="100" y="240" text-anchor="middle">−0.10</text>
+                  <text class="axis-text" x="180" y="240" text-anchor="middle">0</text>
+                  <text class="axis-text" x="260" y="240" text-anchor="middle">0.10</text>
+                  <text class="axis-text" x="340" y="240" text-anchor="middle">0.30</text>
+                  <text class="axis-text" x="420" y="240" text-anchor="middle">0.50</text>
+                  <text class="axis-text" x="95" y="22" text-anchor="end" fill="#ef553b" font-weight="600">← lower threshold</text>
+                  <text class="axis-text" x="265" y="22" fill="#ef553b" font-weight="600">upper threshold →</text>
+                </svg>
+              </div>
+            </div>
+
+            <h4 class="st-h4">Subgroup breakdown</h4>
+            <div class="st-dataframe">
+              <table>
+                <thead><tr><th>Group</th><th class="num">Sample size</th><th class="num">Accuracy</th><th class="num">TPR</th><th class="num">FPR</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Male</strong></td><td class="num">22,000</td><td class="num">0.8521</td><td class="num">0.6734</td><td class="num">0.0812</td></tr>
+                  <tr><td><strong>Female</strong></td><td class="num">10,771</td><td class="num">0.8068</td><td class="num">0.5447</td><td class="num">0.0500</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4 class="st-h4">Flags</h4>
+            <div class="st-alert warning"><div class="st-alert-icon">!</div><div>Demographic parity ratio (0.3214) is below the 0.80 threshold — significant disparity detected.</div></div>
+            <div class="st-alert warning"><div class="st-alert-icon">!</div><div>Equal opportunity difference (−0.1287) exceeds the ±0.10 threshold — the model under-predicts positive outcomes for the Female subgroup.</div></div>
+          </div>
+        </div>
+
+        <div class="st-expander" data-report="fairness_german" data-module="fairness" data-status="pass" data-dataset="German Credit">
+          <div class="st-expander-header">
+            <div class="st-expander-header-left">
+              <span class="st-expander-caret">▸</span>
+              <span>📄 fairness_german_credit.json</span>
+              <span class="risk-pill pass">PASS</span>
+            </div>
+            <div class="st-expander-header-right">
+              <span>German Credit · age_group · RandomForestClassifier</span>
+              <button class="download-btn" onclick="event.stopPropagation(); downloadReport('fairness_german')">⬇ JSON</button>
+            </div>
+          </div>
+          <div class="st-expander-body">
+            <div class="metrics-row" style="margin-bottom: 20px;">
+              <div class="st-metric"><div class="st-metric-label">Demographic parity ratio</div><div class="st-metric-value" style="color: var(--success);">0.8712</div></div>
+              <div class="st-metric"><div class="st-metric-label">Equal opportunity diff.</div><div class="st-metric-value" style="color: var(--success);">−0.0523</div></div>
+              <div class="st-metric"><div class="st-metric-label">Accuracy difference</div><div class="st-metric-value">0.0281</div></div>
+              <div class="st-metric"><div class="st-metric-label">FPR difference</div><div class="st-metric-value">0.0194</div></div>
+            </div>
+            <div class="st-alert success"><div class="st-alert-icon">✓</div><div>All metrics within acceptable thresholds. No significant disparities detected for age_group.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section data-section="leakage">
+        <h2 class="st-h2">Leakage Detection</h2>
+        <p class="caption" style="margin-bottom: 16px;">Four checks per report: target correlation, train/test contamination, future information, single-feature AUC.</p>
+
+        <div class="st-expander open" data-report="leakage_adult" data-module="leakage" data-status="medium" data-dataset="Adult Income">
+          <div class="st-expander-header">
+            <div class="st-expander-header-left">
+              <span class="st-expander-caret">▸</span>
+              <span>📄 leakage_adult_income.json</span>
+              <span class="risk-pill medium">MEDIUM</span>
+            </div>
+            <div class="st-expander-header-right">
+              <span>Adult Income · 14 features checked</span>
+              <button class="download-btn" onclick="event.stopPropagation(); downloadReport('leakage_adult')">⬇ JSON</button>
+            </div>
+          </div>
+          <div class="st-expander-body">
+            <div class="metrics-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+              <div class="st-metric"><div class="st-metric-label">Features checked</div><div class="st-metric-value">14</div></div>
+              <div class="st-metric"><div class="st-metric-label">Flags raised</div><div class="st-metric-value" style="color: var(--warning);">2</div></div>
+              <div class="st-metric"><div class="st-metric-label">Risk level</div><div class="st-metric-value" style="color: var(--warning); font-size: 24px;">MEDIUM</div></div>
+            </div>
+
+            <div class="st-columns-2">
+              <div class="chart-container">
+                <div class="chart-title">Check status</div>
+                <div class="chart-subtitle">Severity per check</div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 8px; margin-bottom: 4px;"><span>target_correlation</span><span class="risk-pill high">HIGH</span></div>
+                <div class="st-progress"><div class="st-progress-fill" style="width: 85%;"></div></div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 12px; margin-bottom: 4px;"><span>train_test_contamination</span><span class="risk-pill low">LOW</span></div>
+                <div class="st-progress"><div class="st-progress-fill success" style="width: 5%;"></div></div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 12px; margin-bottom: 4px;"><span>future_information</span><span class="risk-pill low">LOW</span></div>
+                <div class="st-progress"><div class="st-progress-fill success" style="width: 5%;"></div></div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-top: 12px; margin-bottom: 4px;"><span>single_feature_auc</span><span class="risk-pill medium">MEDIUM</span></div>
+                <div class="st-progress"><div class="st-progress-fill warning" style="width: 60%;"></div></div>
+              </div>
+
+              <div class="chart-container">
+                <div class="chart-title">Target correlation by feature</div>
+                <div class="chart-subtitle">|r| with target — top 8 features shown</div>
+                <svg viewBox="0 0 460 260" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+                  <line x1="145" y1="20" x2="145" y2="240" stroke="#262730" stroke-width="1.5"/>
+                  <line class="threshold-line" x1="375" y1="20" x2="375" y2="240"/>
+                  <text class="axis-text" x="371" y="14" text-anchor="end" fill="#ef553b" font-weight="600">MED 0.85</text>
+                  <text class="axis-text" x="140" y="40" text-anchor="end">relationship</text>
+                  <rect x="145" y="28" width="212" height="20" fill="#ef553b"/>
+                  <text class="axis-text" x="363" y="42" font-weight="600">0.651</text>
+                  <text class="axis-text" x="140" y="66" text-anchor="end">marital-status</text>
+                  <rect x="145" y="54" width="196" height="20" fill="#ff9f36"/>
+                  <text class="axis-text" x="347" y="68" font-weight="600">0.603</text>
+                  <text class="axis-text" x="140" y="92" text-anchor="end">education-num</text>
+                  <rect x="145" y="80" width="111" height="20" fill="#636efa"/>
+                  <text class="axis-text" x="262" y="94" font-weight="600">0.335</text>
+                  <text class="axis-text" x="140" y="118" text-anchor="end">age</text>
+                  <rect x="145" y="106" width="77" height="20" fill="#636efa"/>
+                  <text class="axis-text" x="228" y="120" font-weight="600">0.234</text>
+                  <text class="axis-text" x="140" y="144" text-anchor="end">hours-per-week</text>
+                  <rect x="145" y="132" width="75" height="20" fill="#636efa"/>
+                  <text class="axis-text" x="226" y="146" font-weight="600">0.230</text>
+                  <text class="axis-text" x="140" y="170" text-anchor="end">capital-gain</text>
+                  <rect x="145" y="158" width="74" height="20" fill="#636efa"/>
+                  <text class="axis-text" x="225" y="172" font-weight="600">0.223</text>
+                  <text class="axis-text" x="140" y="196" text-anchor="end">sex</text>
+                  <rect x="145" y="184" width="70" height="20" fill="#636efa"/>
+                  <text class="axis-text" x="221" y="198" font-weight="600">0.215</text>
+                  <text class="axis-text" x="140" y="222" text-anchor="end">occupation</text>
+                  <rect x="145" y="210" width="48" height="20" fill="#636efa"/>
+                  <text class="axis-text" x="199" y="224" font-weight="600">0.148</text>
+                </svg>
+              </div>
+            </div>
+
+            <h4 class="st-h4">Flagged features</h4>
+            <div class="st-dataframe">
+              <table>
+                <thead><tr><th>Feature</th><th>Check</th><th class="num">Metric</th><th>Risk</th><th>Reason</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono"><strong>relationship</strong></td><td>target_correlation</td><td class="num">r = 0.651</td><td><span class="risk-pill high">HIGH</span></td><td>Strong point-biserial correlation with target (&gt; 0.60).</td></tr>
+                  <tr><td class="mono"><strong>marital-status</strong></td><td>single_feature_auc</td><td class="num">AUC = 0.789</td><td><span class="risk-pill medium">MEDIUM</span></td><td>Single-feature AUC exceeds 0.75 threshold.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4 class="st-h4">Notes</h4>
+            <div class="st-alert info"><div class="st-alert-icon">i</div><div>No train/test row duplication detected.</div></div>
+            <div class="st-alert info"><div class="st-alert-icon">i</div><div>No temporal features flagged for future information leakage.</div></div>
+          </div>
+        </div>
+
+        <div class="st-expander open" data-report="leakage_synthetic" data-module="leakage" data-status="critical" data-dataset="Synthetic Leakage Dataset">
+          <div class="st-expander-header">
+            <div class="st-expander-header-left">
+              <span class="st-expander-caret">▸</span>
+              <span>📄 leakage_synthetic.json</span>
+              <span class="risk-pill critical">CRITICAL</span>
+            </div>
+            <div class="st-expander-header-right">
+              <span>Synthetic · 6 features · validation fixture</span>
+              <button class="download-btn" onclick="event.stopPropagation(); downloadReport('leakage_synthetic')">⬇ JSON</button>
+            </div>
+          </div>
+          <div class="st-expander-body">
+            <div class="metrics-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+              <div class="st-metric"><div class="st-metric-label">Features checked</div><div class="st-metric-value">6</div></div>
+              <div class="st-metric"><div class="st-metric-label">Flags raised</div><div class="st-metric-value" style="color: var(--error);">4</div></div>
+              <div class="st-metric"><div class="st-metric-label">Row contamination</div><div class="st-metric-value" style="color: var(--error);">15.00%</div></div>
+            </div>
+
+            <h4 class="st-h4">Flagged features</h4>
+            <div class="st-dataframe">
+              <table>
+                <thead><tr><th>Feature</th><th>Check</th><th class="num">Metric</th><th>Risk</th><th>Reason</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono"><strong>target_encoded</strong></td><td>target_correlation</td><td class="num">r = 1.000</td><td><span class="risk-pill critical">CRITICAL</span></td><td>Feature is a direct encoding of the target variable.</td></tr>
+                  <tr><td class="mono"><strong>future_revenue</strong></td><td>future_information</td><td class="num">—</td><td><span class="risk-pill high">HIGH</span></td><td>Feature contains future information not available at prediction time.</td></tr>
+                  <tr><td class="mono"><strong>target_encoded</strong></td><td>single_feature_auc</td><td class="num">AUC = 1.000</td><td><span class="risk-pill critical">CRITICAL</span></td><td>Single-feature AUC of 1.00 indicates perfect leakage.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4 class="st-h4">Notes</h4>
+            <div class="st-alert error"><div class="st-alert-icon">!</div><div>15% of training rows were found duplicated in the test set — train/test contamination detected.</div></div>
+            <div class="st-alert info"><div class="st-alert-icon">i</div><div>This synthetic dataset was designed with intentional leakage for validation purposes.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- empty state, hidden unless filters remove everything -->
+      <div class="empty-state" id="empty-state" style="display:none;">
+        <strong>No reports match your filters.</strong><br>
+        Try re-enabling a module or clearing the "Failed only" filter.
+      </div>
+    </div>
+
+    <!-- ========= SCHEMA TAB ========= -->
+    <div class="tab-panel" data-panel="schema">
+      <h2 class="st-h2">Schema &amp; Integration</h2>
+      <div class="st-alert info integration-note">
+        <div class="st-alert-icon">i</div>
+        <div>
+          Fairness reports require <code>metrics</code>, <code>subgroups</code>, and <code>flags</code>.
+          Leakage reports require <code>summary</code>, <code>flagged_features</code>, and <code>notes</code>.
+          The dashboard reads any JSON file in the reports directory matching this contract.
+          No module imports another — JSON is the integration surface.
+        </div>
+      </div>
+
+      <h3 class="st-h3">Fairness report example</h3>
+      <div class="chart-container" style="padding: 14px 18px;">
+        <pre style="font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; color: var(--text-primary); overflow-x: auto;">{
+  "dataset": "Adult Income",
+  "sensitive_attribute": "sex",
+  "model": "LogisticRegression",
+  "metrics": {
+    "demographic_parity_ratio": 0.3214,
+    "equal_opportunity_difference": -0.1287,
+    ...
+  },
+  "subgroups": [...],
+  "flags": [...]
+}</pre>
+      </div>
+
+      <h3 class="st-h3">Leakage report example</h3>
+      <div class="chart-container" style="padding: 14px 18px;">
+        <pre style="font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; color: var(--text-primary); overflow-x: auto;">{
+  "dataset": "Adult Income",
+  "checks_run": [...],
+  "summary": {
+    "features_checked": 14,
+    "flags_raised": 2,
+    "risk_level": "Medium"
+  },
+  "flagged_features": [...],
+  "notes": [...]
+}</pre>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ---------- mock report JSON payloads for download ----------
+const reports = {
+  'fairness_adult': {
+    "dataset": "Adult Income",
+    "sensitive_attribute": "sex",
+    "model": "LogisticRegression",
+    "metrics": {
+      "demographic_parity_ratio": 0.3214,
+      "equal_opportunity_difference": -0.1287,
+      "accuracy_difference": 0.0453,
+      "false_positive_rate_difference": 0.0312
+    },
+    "subgroups": [
+      { "group": "Male", "accuracy": 0.8521, "true_positive_rate": 0.6734, "false_positive_rate": 0.0812, "sample_size": 22000 },
+      { "group": "Female", "accuracy": 0.8068, "true_positive_rate": 0.5447, "false_positive_rate": 0.0500, "sample_size": 10771 }
+    ],
+    "flags": [
+      "Demographic parity ratio (0.3214) is below the 0.80 threshold — significant disparity detected.",
+      "Equal opportunity difference (-0.1287) exceeds the ±0.10 threshold — the model under-predicts positive outcomes for the Female subgroup."
+    ]
+  },
+  'fairness_german': {
+    "dataset": "German Credit",
+    "sensitive_attribute": "age_group",
+    "model": "RandomForestClassifier",
+    "metrics": {
+      "demographic_parity_ratio": 0.8712,
+      "equal_opportunity_difference": -0.0523,
+      "accuracy_difference": 0.0281,
+      "false_positive_rate_difference": 0.0194
+    },
+    "subgroups": [
+      { "group": "age >= 25", "accuracy": 0.7450, "true_positive_rate": 0.8192, "false_positive_rate": 0.3810, "sample_size": 690 },
+      { "group": "age < 25", "accuracy": 0.7169, "true_positive_rate": 0.7669, "false_positive_rate": 0.3616, "sample_size": 310 }
+    ],
+    "flags": ["All metrics are within acceptable thresholds. No significant fairness disparities detected for age_group."]
+  },
+  'leakage_adult': {
+    "dataset": "Adult Income",
+    "checks_run": ["target_correlation", "train_test_contamination", "future_information", "single_feature_auc"],
+    "summary": { "features_checked": 14, "flags_raised": 2, "risk_level": "Medium" },
+    "flagged_features": [
+      { "feature": "relationship", "check": "target_correlation", "correlation": 0.651, "risk": "High", "reason": "Strong point-biserial correlation with target (>0.60)." },
+      { "feature": "marital-status", "check": "single_feature_auc", "auc": 0.789, "risk": "Medium", "reason": "Single-feature AUC exceeds 0.75 threshold." }
+    ],
+    "notes": ["No train/test row duplication detected.", "No temporal features flagged for future information leakage."]
+  },
+  'leakage_synthetic': {
+    "dataset": "Synthetic Leakage Dataset",
+    "checks_run": ["target_correlation", "train_test_contamination", "future_information", "single_feature_auc"],
+    "summary": { "features_checked": 6, "flags_raised": 4, "risk_level": "Critical" },
+    "flagged_features": [
+      { "feature": "target_encoded", "check": "target_correlation", "correlation": 1.0, "risk": "Critical", "reason": "Feature is a direct encoding of the target variable." },
+      { "feature": "future_revenue", "check": "future_information", "risk": "High", "reason": "Feature contains future information not available at prediction time." },
+      { "feature": "target_encoded", "check": "single_feature_auc", "auc": 1.0, "risk": "Critical", "reason": "Single-feature AUC of 1.00 indicates perfect leakage." }
+    ],
+    "notes": [
+      "15% of training rows were found duplicated in the test set — train/test contamination detected.",
+      "This synthetic dataset was designed with intentional leakage for validation purposes."
+    ]
+  }
+};
+
+// ---------- tab switching ----------
+document.querySelectorAll('.st-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    document.querySelectorAll('.st-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    if (target === 'schema') {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('[data-panel="schema"]').classList.add('active');
+    } else {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('[data-panel="overview"]').classList.add('active');
+
+      // scroll-to or filter by module
+      if (target === 'overview') {
+        // show both sections
+        document.querySelectorAll('section[data-section]').forEach(s => s.style.display = '');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (target === 'fairness') {
+        document.querySelector('section[data-section="fairness"]').style.display = '';
+        document.querySelector('section[data-section="leakage"]').style.display = 'none';
+      } else if (target === 'leakage') {
+        document.querySelector('section[data-section="fairness"]').style.display = 'none';
+        document.querySelector('section[data-section="leakage"]').style.display = '';
+      }
+    }
+  });
+});
+
+// ---------- expander toggling ----------
+document.querySelectorAll('.st-expander-header').forEach(header => {
+  header.addEventListener('click', () => {
+    header.parentElement.classList.toggle('open');
+  });
+});
+
+// ---------- filtering ----------
+function applyFilters() {
+  const showFairness = document.getElementById('filter-fairness').checked;
+  const showLeakage = document.getElementById('filter-leakage').checked;
+  const failedOnly = document.getElementById('filter-failed-only').checked;
+  const dataset = document.getElementById('filter-dataset').value;
+
+  let visibleCount = 0;
+  let fairnessVisible = 0, leakageVisible = 0;
+  let flaggedCount = 0;
+  const visibleDatasets = new Set();
+
+  document.querySelectorAll('.st-expander[data-report]').forEach(exp => {
+    const module = exp.dataset.module;
+    const status = exp.dataset.status;
+    const ds = exp.dataset.dataset;
+
+    let visible = true;
+    if (module === 'fairness' && !showFairness) visible = false;
+    if (module === 'leakage' && !showLeakage) visible = false;
+    if (failedOnly && ['pass', 'low'].includes(status)) visible = false;
+    if (dataset !== 'all' && ds !== dataset) visible = false;
+
+    if (visible) {
+      exp.classList.remove('hidden-by-filter');
+      visibleCount++;
+      if (module === 'fairness') fairnessVisible++;
+      else leakageVisible++;
+      if (['fail', 'medium', 'critical', 'high'].includes(status)) flaggedCount++;
+      visibleDatasets.add(ds);
+    } else {
+      exp.classList.add('hidden-by-filter');
+    }
+  });
+
+  // update sidebar list
+  document.querySelectorAll('.report-item').forEach(item => {
+    const reportKey = item.dataset.report;
+    const exp = document.querySelector(`.st-expander[data-report="${reportKey}"]`);
+    if (exp && exp.classList.contains('hidden-by-filter')) item.classList.add('hidden');
+    else item.classList.remove('hidden');
+  });
+
+  // update section visibility
+  const fairnessSection = document.querySelector('section[data-section="fairness"]');
+  const leakageSection = document.querySelector('section[data-section="leakage"]');
+  // only auto-hide sections if we're in the overview tab
+  const activeTab = document.querySelector('.st-tab.active').dataset.tab;
+  if (activeTab === 'overview') {
+    fairnessSection.style.display = fairnessVisible > 0 ? '' : 'none';
+    leakageSection.style.display = leakageVisible > 0 ? '' : 'none';
+  }
+
+  // update metrics
+  document.getElementById('metric-loaded').textContent = visibleCount;
+  document.getElementById('metric-loaded-sub').textContent = `${fairnessVisible} fairness · ${leakageVisible} leakage`;
+  document.getElementById('metric-flagged').textContent = flaggedCount;
+  document.getElementById('metric-flagged-sub').textContent = flaggedCount > 0 ? `▲ ${flaggedCount} requiring action` : 'all clear';
+  document.getElementById('metric-datasets').textContent = visibleDatasets.size;
+  document.getElementById('metric-datasets-sub').textContent = Array.from(visibleDatasets).join(' · ') || '—';
+
+  // empty state
+  document.getElementById('empty-state').style.display = visibleCount === 0 ? '' : 'none';
+
+  // update verdict alert
+  const alertEl = document.getElementById('verdict-alert');
+  const alertText = document.getElementById('verdict-text');
+  if (visibleCount === 0) {
+    alertEl.className = 'st-alert info';
+    alertText.innerHTML = '<strong>No reports visible.</strong> Adjust sidebar filters to see reports.';
+  } else if (flaggedCount === 0) {
+    alertEl.className = 'st-alert success';
+    alertText.innerHTML = `<strong>All clear.</strong> ${visibleCount} report${visibleCount === 1 ? '' : 's'} passed — no disparities or leakage flagged.`;
+  } else {
+    alertEl.className = 'st-alert error';
+    alertText.innerHTML = `<strong>Composite verdict: Review required.</strong> ${flaggedCount} of ${visibleCount} report${visibleCount === 1 ? '' : 's'} flagged for action.`;
+  }
+}
+
+['filter-fairness', 'filter-leakage', 'filter-failed-only', 'filter-dataset'].forEach(id => {
+  document.getElementById(id).addEventListener('change', applyFilters);
+});
+
+// ---------- download JSON ----------
+function downloadReport(key) {
+  const data = reports[key];
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${key}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>

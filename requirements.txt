@@ -1,11 +1,5 @@
 # ML Reliability & Efficiency Toolkit — dependencies
 # Python 3.10 or newer required
-#
-# Install:
-#   pip install -r requirements.txt
-#
-# Verify:
-#   python -c "import pandas, sklearn, fairlearn, streamlit, plotly, pytest; print('OK')"
 
 # ----- Base data stack -----
 pandas>=2.0
@@ -16,6 +10,9 @@ ucimlrepo>=0.0.6
 
 # ----- Fairness module -----
 fairlearn>=0.10
+
+# ----- Hugging Face datasets -----
+datasets>=3.0
 
 # ----- Dashboard -----
 streamlit>=1.30
